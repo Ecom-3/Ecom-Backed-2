@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:3314}
+  port: ${SERVER_PORT:53314}
 
 spring:
   sql:
@@ -24,7 +24,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:58761/eureka}
 
 management:
   endpoints:
@@ -40,7 +40,7 @@ management:
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:58761/eureka}
 
 management:
   endpoints:

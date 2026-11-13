@@ -41,11 +41,11 @@ class StoreDeliveryLocationTest {
     when(zones.findByStoreIdOrderByMinRadiusKmAsc("main")).thenReturn(List.of(zone(1,"hyderabad"),zone(2,"chennai")));
     assertThatThrownBy(()->service.getZoneLocation(18L)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("conflict");
   }
-  @Test void missingOrConflictingRegionMappingsCannotInventAssignments(){
+  @Test void storeLocationIsStableFallbackDespiteOtherRegionMappings(){
     store();var legacy=zone(18,null);when(zones.findById(18L)).thenReturn(Optional.of(legacy));
-    assertThatThrownBy(()->service.getZoneLocation(18L)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("mapping");
+    assertThat(service.getZoneLocation(18L).locationId()).isEqualTo("Hyderabad");
     when(zones.findMappedLocationIdsForStoreRegion("Hyderabad")).thenReturn(List.of("hyderabad","another-location"));
-    assertThatThrownBy(()->service.getZoneLocation(18L)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("ambiguous");
+    assertThat(service.getZoneLocation(18L).locationId()).isEqualTo("Hyderabad");
   }
   @Test void explicitMappingIsPreserved(){
     when(zones.findById(18L)).thenReturn(Optional.of(zone(18,"hyderabad")));

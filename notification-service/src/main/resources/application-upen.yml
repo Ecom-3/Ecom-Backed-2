@@ -1,10 +1,10 @@
 server:
-  port: 3317
+  port: 53317
 spring:
   application:
     name: notification-service
   config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:58888}
   sql:
     init:
       mode: never
@@ -42,7 +42,7 @@ spring:
       mail.smtp.ssl.enable: false
 org-access:
   service:
-    url: ${ORG_ACCESS_SERVICE_URL:http://localhost:3310}
+    url: ${ORG_ACCESS_SERVICE_URL:http://localhost:53310}
     token: ${ORG_ACCESS_TOKEN:}
 notification:
   sending:
@@ -50,7 +50,7 @@ notification:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:58761/eureka}
 management:
   endpoints:
     web:
@@ -66,9 +66,9 @@ sync:
     payment-service: ${PAYMENT_SYNC_KEY:}
     fulfillment-service: ${FULFILLMENT_SYNC_KEY:}
   targets:
-    order-service: ${ORDER_SERVICE_URL:http://localhost:3311}
-    payment-service: ${PAYMENT_SERVICE_URL:http://localhost:3314}
-    fulfillment-service: ${FULFILLMENT_SERVICE_URL:http://localhost:3315}
-    notification-service: ${NOTIFICATION_SERVICE_URL:http://localhost:3317}
+    order-service: ${ORDER_SERVICE_URL:http://localhost:53311}
+    payment-service: ${PAYMENT_SERVICE_URL:http://localhost:53314}
+    fulfillment-service: ${FULFILLMENT_SERVICE_URL:http://localhost:53315}
+    notification-service: ${NOTIFICATION_SERVICE_URL:http://localhost:53317}
   routes:
     unused: notification-service

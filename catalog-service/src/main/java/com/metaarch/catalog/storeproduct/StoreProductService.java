@@ -21,7 +21,7 @@ import java.util.*; import com.metaarch.catalog.exception.*; import com.metaarch
  @Transactional(readOnly=true) public List<StoreProductResponse> publicList(String storeId,UUID productId){
   Set<String> activeStoreIds=stores.findByActive(true).stream().map(com.metaarch.catalog.store.Store::getId).collect(java.util.stream.Collectors.toSet());
   return mappings.findAll().stream()
-      .filter(m->m.isAvailable()&&("global-store".equalsIgnoreCase(m.getStoreId())
+      .filter(m->("global-store".equalsIgnoreCase(m.getStoreId())
           ? m.getProduct().isGlobalProduct() : activeStoreIds.contains(m.getStoreId())))
       .filter(m->m.getProduct().getStatus()==com.metaarch.catalog.product.ProductStatus.ACTIVE)
       .filter(m->storeId==null||storeId.isBlank()||m.getStoreId().equalsIgnoreCase(storeId))

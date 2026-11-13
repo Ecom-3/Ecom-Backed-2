@@ -17,7 +17,7 @@ public class OrgAccessRecipientClient {
   private final String token;
 
   public OrgAccessRecipientClient(RestClient.Builder builder,
-      @Value("${org-access.service.url:${ORG_ACCESS_SERVICE_URL:http://localhost:3310}}") String baseUrl,
+      @Value("${org-access.service.url:${ORG_ACCESS_SERVICE_URL:http://localhost:93310}}") String baseUrl,
       @Value("${org-access.service.token:${ORG_ACCESS_TOKEN:}}") String token) {
     this.token = token == null ? "" : token.trim();
     this.client = builder.baseUrl(baseUrl.replaceAll("/+$", "")).build();

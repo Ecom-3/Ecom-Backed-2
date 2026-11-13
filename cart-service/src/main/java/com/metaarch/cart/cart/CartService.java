@@ -44,6 +44,11 @@ public class CartService {
   @Transactional public CartResponse calculateTotal(UUID cartId) { Cart cart = find(cartId); calculate(cart); return CartResponse.from(cart); }
   @Transactional public CartResponse saveForLater(UUID cartId, UUID itemId) { Cart cart = find(cartId); ensureActive(cart); CartItem item = findItem(cart, itemId); item.setStatus(CartItemStatus.SAVED_FOR_LATER); calculate(cart); return CartResponse.from(cart); }
   @Transactional public CartResponse moveToCart(UUID cartId, UUID itemId) { Cart cart = find(cartId); ensureActive(cart); CartItem item = findItem(cart, itemId); item.setStatus(CartItemStatus.ACTIVE); calculate(cart); return CartResponse.from(cart); }
+  @Transactional public CartResponse removeSavedForLater(UUID cartId, UUID itemId) {
+    Cart cart = find(cartId); ensureActive(cart); CartItem item = findItem(cart, itemId);
+    if (item.getStatus() != CartItemStatus.SAVED_FOR_LATER) throw new ResourceNotFoundException("Saved cart item not found: " + itemId);
+    cart.removeItem(item); calculate(cart); return CartResponse.from(cart);
+  }
   private Cart find(UUID id) {
     return (org.springframework.transaction.support.TransactionSynchronizationManager.isCurrentTransactionReadOnly()
       ? carts.findWithItemsById(id) : carts.findLockedById(id))

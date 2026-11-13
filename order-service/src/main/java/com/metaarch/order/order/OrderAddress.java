@@ -19,10 +19,15 @@ public class OrderAddress {
   @Column(name = "postal_code", nullable = false, length = 30) private String postalCode;
   @Column(name = "recipient_name", length = 180) private String recipientName;
   @Column(name = "recipient_phone", length = 30) private String recipientPhone;
+  @Column(name = "source_address_id", length = 64) private String sourceAddressId;
 
   protected OrderAddress() { }
 
   public OrderAddress(AddressType addressType, String addressLine1, String addressLine2, String city, String state, String country, String postalCode, String recipientName, String recipientPhone) {
+    this(addressType, addressLine1, addressLine2, city, state, country, postalCode, recipientName, recipientPhone, null);
+  }
+
+  public OrderAddress(AddressType addressType, String addressLine1, String addressLine2, String city, String state, String country, String postalCode, String recipientName, String recipientPhone, String sourceAddressId) {
     this.addressType = addressType;
     this.addressLine1 = addressLine1;
     this.addressLine2 = addressLine2;
@@ -32,6 +37,7 @@ public class OrderAddress {
     this.postalCode = postalCode;
     this.recipientName = recipientName;
     this.recipientPhone = recipientPhone;
+    this.sourceAddressId = sourceAddressId;
   }
 
   public UUID getId() { return id; }
@@ -47,4 +53,5 @@ public class OrderAddress {
   public String getPostalCode() { return postalCode; }
   public String getRecipientName() { return recipientName; }
   public String getRecipientPhone() { return recipientPhone; }
+  public String getSourceAddressId() { return sourceAddressId; }
 }

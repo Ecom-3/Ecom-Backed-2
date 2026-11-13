@@ -18,4 +18,14 @@ public class AssignmentAcceptanceController {
   public void accept(@PathVariable UUID shipmentId, JwtAuthenticationToken auth) {
     tracking.acceptAssignment(shipmentId,auth.getToken().getClaimAsString("deliveryPartnerId"));
   }
+  @PostMapping("/{shipmentId}/pickup")
+  @PreAuthorize("@fulfillmentAccess.assignedShipment(#shipmentId)")
+  public void pickup(@PathVariable UUID shipmentId, JwtAuthenticationToken auth) {
+    tracking.pickup(shipmentId,auth.getToken().getClaimAsString("deliveryPartnerId"));
+  }
+  @PostMapping("/{shipmentId}/complete-delivery")
+  @PreAuthorize("@fulfillmentAccess.assignedShipment(#shipmentId)")
+  public void completeDelivery(@PathVariable UUID shipmentId, JwtAuthenticationToken auth) {
+    tracking.completeDelivery(shipmentId,auth.getToken().getClaimAsString("deliveryPartnerId"));
+  }
 }

@@ -15,7 +15,7 @@ import org.springframework.web.client.RestClientException;
 public class FulfillmentDeliveryClient {
   private final RestClient client;
   @Autowired
-  public FulfillmentDeliveryClient(RestClient.Builder builder, @Value("${FULFILLMENT_SERVICE_URL:http://localhost:3315}") String url) {
+  public FulfillmentDeliveryClient(RestClient.Builder builder, @Value("${FULFILLMENT_SERVICE_URL:http://localhost:93315}") String url) {
     var factory = new SimpleClientHttpRequestFactory();
     factory.setConnectTimeout(3000);factory.setReadTimeout(5000);
     client = builder.clone().baseUrl(url).requestFactory(factory).build();

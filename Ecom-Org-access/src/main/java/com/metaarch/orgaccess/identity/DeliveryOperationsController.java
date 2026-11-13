@@ -51,9 +51,9 @@ public class DeliveryOperationsController {
   private String notificationPath;
   public DeliveryOperationsController(StaffProfileController profiles, JdbcTemplate jdbc, PasswordEncoder passwords,
       JwtTokenProvider tokens,
-      @Value("${services.orders-url:http://localhost:3311}") String orderUrl,
-      @Value("${services.fulfillment-url:http://localhost:3315}") String fulfillmentUrl,
-      @Value("${services.notifications-url:http://localhost:3317}") String notificationUrl) {
+      @Value("${services.orders-url:http://localhost:93311}") String orderUrl,
+      @Value("${services.fulfillment-url:http://localhost:93315}") String fulfillmentUrl,
+      @Value("${services.notifications-url:http://localhost:93317}") String notificationUrl) {
     this.profiles=profiles;this.jdbc=jdbc;this.passwords=passwords;this.tokens=tokens;
     orders=client(orderUrl);shipments=client(fulfillmentUrl);notifications=client(notificationUrl);
   }
@@ -73,11 +73,16 @@ public class DeliveryOperationsController {
   @SuppressWarnings("unchecked")
   private Map<String,Object> get(RestClient client,String path) { return client.get().uri(path).retrieve().body(Map.class); }
   private ResponseStatusException invalid(String message) { return new ResponseStatusException(HttpStatus.CONFLICT,message); }
+  @SuppressWarnings("unchecked")
   private Map<String,Object> assigned(UUID orderId,Authentication auth) {
-    Map<String,Object> shipment=Objects.requireNonNull(get(shipments,shipmentsOrderPath+orderId));
-    if(!String.valueOf(profiles.me(auth).get("id")).equals(String.valueOf(shipment.get(DELIVERY_PARTNER_ID)))) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN,"This delivery is not assigned to you.");
-    }
+    List<Map<String,Object>> assigned=shipments.get().uri("/api/v1/shipments/assigned").retrieve().body(List.class);
+    Map<String,Object> shipment=assigned==null?null:assigned.stream()
+        .filter(item -> orderId.toString().equalsIgnoreCase(String.valueOf(item.get("orderId"))))
+        .findFirst().orElse(null);
+    if(shipment==null) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"This delivery is not assigned to you.");
+    String profileId=String.valueOf(profiles.me(auth).get("id")).trim();
+    String assignedId=shipment.get(DELIVERY_PARTNER_ID)==null?"":String.valueOf(shipment.get(DELIVERY_PARTNER_ID)).trim();
+    if(!profileId.equals(assignedId)) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"This delivery is assigned to a different partner. Refresh your assigned deliveries or ask the store to reassign it.");
     return shipment;
   }
   private String displayStatus(String state) {
@@ -88,10 +93,8 @@ public class DeliveryOperationsController {
     try { return Instant.parse(value.toString()); } catch (RuntimeException ignored) { return null; }
   }
   private List<Map<String,Object>> trackingEvents(Object shipmentId) {
-    try {
-      List<Map<String,Object>> tracking=shipments.get().uri(shipmentsPath+shipmentId+TRACKING_EVENTS_PATH).retrieve().body(List.class);
-      return tracking == null ? List.of() : tracking;
-    } catch(Exception ex) { return List.of(); }
+    List<Map<String,Object>> tracking=shipments.get().uri(shipmentsPath+shipmentId+TRACKING_EVENTS_PATH).retrieve().body(List.class);
+    return tracking == null ? List.of() : tracking;
   }
   private Map<String,Object> acceptedEvent(List<Map<String,Object>> tracking, Map<String,Object> shipment) {
     Instant assignedAt=instant(shipment.get("deliveryAssignedAt"));
@@ -137,7 +140,9 @@ public class DeliveryOperationsController {
       row.put("deliveredAt",shipment.get("deliveredAt"));row.put("total",order.get("totalAmount"));
       String state=String.valueOf(shipment.get(STATUS));
       row.put(STATUS,displayStatus(state));
-      List<Map<String,Object>> tracking=trackingEvents(shipment.get("id"));
+      List<Map<String,Object>> tracking;
+      try { tracking=trackingEvents(shipment.get("id")); }
+      catch(org.springframework.web.client.RestClientResponseException ex) { tracking=List.of(); }
       row.put("trackingEvents",tracking);
       addDeliveryAcceptedAt(row,tracking,shipment);
       try {
@@ -232,9 +237,8 @@ public class DeliveryOperationsController {
     switch(request.action()) {
       case "ACCEPT" -> description=ASSIGNMENT_ACCEPTED;
       case "PICKUP" -> {
-        if (acceptedEvent(trackingEvents(shipment.get("id")),shipment)==null) throw invalid("Accept the assignment before picking up the order.");
-        if (!"CREATED".equals(state)) throw invalid("This shipment cannot be picked up in its current state.");
-        next="IN_TRANSIT";description="Order picked up by delivery partner.";
+        shipments.post().uri(shipmentsPath+id+"/pickup").retrieve().toBodilessEntity();
+        return;
       }
       case "START" -> {next=OUT_FOR_DELIVERY;description="Order is out for delivery.";}
       case "CANCEL" -> {if(request.reason()==null||request.reason().isBlank()){throw invalid("A cancellation reason is required.");}next=state.equals(OUT_FOR_DELIVERY)?FAILED:"CANCELLED";description="Delivery cancelled by partner: "+request.reason();}
@@ -244,13 +248,14 @@ public class DeliveryOperationsController {
         if(checks.isEmpty()||((Number)checks.getFirst().get("attempts")).intValue()>=5){throw invalid("Request a new OTP; this code is expired or locked.");}
         jdbc.update("UPDATE delivery_verifications SET attempts=attempts+1 WHERE order_id=?",orderId.toString());
         if(request.otp()==null||!passwords.matches(request.otp(),String.valueOf(checks.getFirst().get("code_hash")))){throw invalid("Incorrect delivery OTP.");}
-        next="DELIVERED";description="Delivery completed with customer OTP.";
+        shipments.post().uri(shipmentsPath+id+"/complete-delivery").retrieve().toBodilessEntity();
+        jdbc.update("UPDATE delivery_verifications SET consumed=1 WHERE order_id=?",orderId.toString());
+        return;
       }
       default -> throw invalid("Unknown delivery action.");
     }
     if(!next.equals(state)) changeShipmentStatus(shipment,orderId,next,auth);
     recordTracking(shipment,orderId,auth,next,String.valueOf(profiles.me(auth).get("store")),description);
-    if(request.action().equals("VERIFY"))jdbc.update("UPDATE delivery_verifications SET consumed=1 WHERE order_id=?",orderId.toString());
   }
   @PostMapping("/me/orders/{orderId}/otp")
   @PreAuthorize("hasRole('DELIVERY_PARTNER')")

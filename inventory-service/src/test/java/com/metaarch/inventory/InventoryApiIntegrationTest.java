@@ -35,6 +35,17 @@ class InventoryApiIntegrationTest {
   @org.springframework.boot.test.mock.mockito.MockBean org.springframework.security.oauth2.jwt.JwtDecoder decoder;
   @org.springframework.boot.test.mock.mockito.MockBean com.metaarch.sync.CatalogLocationClient catalog;
 
+  @Test void publicStockStatusUsesConfiguredReorderLevelWithoutReturningCounts() {
+    UUID productId = UUID.randomUUID();
+    String storeId = "store-public-low-stock-test";
+    inventories.create(new com.metaarch.inventory.inventory.InventoryRequest(productId, null, storeId, 2, 0, 3,
+        com.metaarch.inventory.inventory.InventoryStatus.ACTIVE));
+    var status = inventories.getPublicStockStatus(productId, null, storeId);
+    org.junit.jupiter.api.Assertions.assertTrue(status.available());
+    org.junit.jupiter.api.Assertions.assertTrue(status.lowStock());
+    org.junit.jupiter.api.Assertions.assertFalse(new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(status).has("availableQuantity"));
+  }
+
   @org.junit.jupiter.api.BeforeEach void authentication() {
     jdbc.execute("CREATE TABLE IF NOT EXISTS checkout_reservations(child_id VARCHAR(36) PRIMARY KEY,state VARCHAR(24))");
     jdbc.execute("CREATE TABLE IF NOT EXISTS checkout_reservation_lines(child_id VARCHAR(36),inventory_id BINARY(16),quantity INT)");

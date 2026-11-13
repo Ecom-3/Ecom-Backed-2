@@ -1,5 +1,5 @@
 server:
-  port: 8095
+  port: 58095
 app:
   jwt:
     secret: "${JWT_SECRET:change-this-secret-to-a-long-random-string}"
@@ -8,7 +8,7 @@ spring:
   application:
     name: inventory-service
   config:
-    import: "optional:configserver:http://localhost:8888"
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:58888}"
   sql:
     init:
       mode: never
@@ -33,7 +33,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:58761/eureka}
 management:
   endpoints:
     web:
@@ -49,6 +49,6 @@ sync:
     inventory-service: ${INVENTORY_SYNC_KEY:}
     order-service: ${ORDER_SYNC_KEY:}
   targets:
-    order-service: ${ORDER_SERVICE_URL:http://localhost:3311}
+    order-service: ${ORDER_SERVICE_URL:http://localhost:53311}
   routes:
     checkout-reservation-result: order-service

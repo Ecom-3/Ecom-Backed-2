@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClient;
 @Component
 public class GlobalStoreAssignmentInventoryClient {
   private final RestClient client;
-  public GlobalStoreAssignmentInventoryClient(RestClient.Builder builder, @Value("${inventory.service.url:${INVENTORY_SERVICE_URL:http://localhost:8095}}") String url) {
+  public GlobalStoreAssignmentInventoryClient(RestClient.Builder builder, @Value("${inventory.service.url:${INVENTORY_SERVICE_URL:http://localhost:98095}}") String url) {
     client = builder.baseUrl(url).requestInterceptor((request, body, execution) -> {
       var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
       if (auth instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwt)

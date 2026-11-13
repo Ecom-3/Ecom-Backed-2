@@ -5,10 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record UserCreateRequest(
-    @NotBlank @Size(max = 190) String username,
-    @NotBlank @Email String email,
-    @NotBlank @Size(min = 8, max = 100) String password,
-    @NotBlank String role,
+    @NotBlank(message = "Enter a login username.") @Size(max = 190, message = "Username must be 190 characters or fewer.") String username,
+    @NotBlank(message = "Enter an email address.") @Email(message = "Enter a valid email address.") String email,
+    @NotBlank(message = "Enter a password.") @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters.") String password,
+    @NotBlank(message = "Select a user role.") String role,
     @Size(max = 180) String name,
     @Size(max = 30) String mobile,
     @Size(max = 30) String status,

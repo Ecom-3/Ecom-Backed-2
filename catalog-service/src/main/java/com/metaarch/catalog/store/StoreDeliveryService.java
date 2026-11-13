@@ -67,22 +67,34 @@ public class StoreDeliveryService {
     if ("global-store".equalsIgnoreCase(storeId) || "global".equalsIgnoreCase(deliveryMethod)) {
       return new DeliveryQuoteResponse(storeId, store.getLatitude(), store.getLongitude(), customerLatitude, customerLongitude, true, null, null, null, null, "India-wide", null, null, "global", BigDecimal.ZERO, null, false, null, null, null, false, List.of(), "Global Delivery - Tracking ID provided after dispatch");
     }
-    if (store.getLatitude() == null || store.getLongitude() == null || customerLatitude == null || customerLongitude == null) {
-      throw new OpenRouteServiceClient.RouteUnavailableException("Store and customer coordinates are required to verify delivery route.");
+    if (customerLatitude == null || customerLongitude == null) {
+      throw new OpenRouteServiceClient.RouteUnavailableException("Customer coordinates are required to verify delivery route.");
+    }
+    if (store.getLatitude() == null || store.getLongitude() == null) {
+      boolean pickupAvailable = store.isPickupEnabled() && ACTIVE_STATUS.equalsIgnoreCase(store.getStatus());
+      List<StoreDeliveryMethodResponse> pickupMethods = methods.findByStoreIdOrderByDeliveryTypeAsc(storeId).stream()
+          .filter(StoreDeliveryMethod::isEnabled).filter(method -> isPickup(method.getDeliveryType()))
+          .map(StoreDeliveryMethodResponse::from).toList();
+      String message = pickupAvailable ? "Store location is not configured yet. Store pickup is available." : "Store location is not configured yet.";
+      return new DeliveryQuoteResponse(storeId, null, null, customerLatitude, customerLongitude, false, null, null, null, null,
+          null, null, null, normalizeMethod(deliveryMethod), BigDecimal.ZERO, null, false, null, null, null, pickupAvailable,
+          pickupMethods, message);
     }
     OpenRouteServiceClient.RouteResult route = routes.drivingRoute(store.getLatitude(), store.getLongitude(), customerLatitude, customerLongitude);
     BigDecimal distance = route.distanceKm();
     BigDecimal radiusDistance = straightLineDistanceKm(store.getLatitude(), store.getLongitude(), customerLatitude, customerLongitude);
     boolean pickupAvailable = store.isPickupEnabled() && ACTIVE_STATUS.equalsIgnoreCase(store.getStatus());
-    if (store.getDeliveryRadiusKm() != null && store.getDeliveryRadiusKm().signum() > 0
+    List<StoreDeliveryZone> storeZones = zones.findByStoreIdOrderByMinRadiusKmAsc(storeId);
+    boolean hasActiveZones = storeZones.stream().anyMatch(item -> ACTIVE_STATUS.equalsIgnoreCase(item.getStatus()));
+    if (!hasActiveZones && store.getDeliveryRadiusKm() != null && store.getDeliveryRadiusKm().signum() > 0
         && radiusDistance.compareTo(store.getDeliveryRadiusKm()) > 0) {
       return outsideDeliveryRadius(store, customerLatitude, customerLongitude, route, deliveryMethod, pickupAvailable);
     }
-    StoreDeliveryZone zone = zones.findByStoreIdOrderByMinRadiusKmAsc(storeId).stream()
+    StoreDeliveryZone zone = storeZones.stream()
       .filter(item -> ACTIVE_STATUS.equalsIgnoreCase(item.getStatus()))
-      .filter(item -> distance.compareTo(item.getMinRadiusKm()) >= 0 && distance.compareTo(item.getMaxRadiusKm()) <= 0)
+      .filter(item -> radiusDistance.compareTo(item.getMinRadiusKm()) >= 0 && radiusDistance.compareTo(item.getMaxRadiusKm()) <= 0)
       .findFirst().orElse(null);
-    if (zone == null && store.getDeliveryRadiusKm() != null && store.getDeliveryRadiusKm().signum() > 0
+    if (zone == null && !hasActiveZones && store.getDeliveryRadiusKm() != null && store.getDeliveryRadiusKm().signum() > 0
         && radiusDistance.compareTo(store.getDeliveryRadiusKm()) <= 0 && store.isDeliveryEnabled() && ACTIVE_STATUS.equalsIgnoreCase(store.getStatus())) {
       return storeRadiusQuote(store, customerLatitude, customerLongitude, route, orderTotal, deliveryMethod, pickupAvailable);
     }
@@ -102,13 +114,17 @@ public class StoreDeliveryService {
       .findFirst()
       .orElse(null);
     if (orderTotal != null && zone.getMinimumOrder() != null && orderTotal.compareTo(zone.getMinimumOrder()) < 0) {
-      return new DeliveryQuoteResponse(storeId, store.getLatitude(), store.getLongitude(), customerLatitude, customerLongitude, false, distance, route.distanceMeters(), route.durationSeconds(), route.durationMinutes(), matchedZoneLabel(zone), route.geometry(), zone.getId(), selectedMethod, BigDecimal.ZERO, zone.getFreeDeliveryAbove(), false, zone.getMinimumOrder(), zone.getEstimatedDeliveryMin(), zone.getEstimatedDeliveryMax(), pickupAvailable, availableMethods, "Minimum order is " + zone.getMinimumOrder());
+      String locationId = zone.getLocationId() == null || zone.getLocationId().isBlank()
+          ? canonicalStoreLocation(store) : zone.getLocationId().trim();
+      return new DeliveryQuoteResponse(storeId, store.getLatitude(), store.getLongitude(), customerLatitude, customerLongitude, false, distance, route.distanceMeters(), route.durationSeconds(), route.durationMinutes(), matchedZoneLabel(zone), route.geometry(), zone.getId(), selectedMethod, BigDecimal.ZERO, zone.getFreeDeliveryAbove(), false, zone.getMinimumOrder(), zone.getEstimatedDeliveryMin(), zone.getEstimatedDeliveryMax(), pickupAvailable, availableMethods, "Minimum order is " + zone.getMinimumOrder(), locationId);
     }
     BigDecimal charge = selected != null && selected.deliveryCharge() != null ? selected.deliveryCharge() : zone.getDeliveryCharge();
     boolean freeDeliveryApplied = orderTotal != null && zone.getFreeDeliveryAbove() != null && orderTotal.compareTo(zone.getFreeDeliveryAbove()) >= 0 && !isPickup(selectedMethod);
     if (freeDeliveryApplied || isPickup(selectedMethod)) charge = BigDecimal.ZERO;
     boolean methodAvailable = selected != null;
-    return new DeliveryQuoteResponse(storeId, store.getLatitude(), store.getLongitude(), customerLatitude, customerLongitude, methodAvailable, distance, route.distanceMeters(), route.durationSeconds(), route.durationMinutes(), matchedZoneLabel(zone), route.geometry(), zone.getId(), selectedMethod, charge, zone.getFreeDeliveryAbove(), freeDeliveryApplied, zone.getMinimumOrder(), zone.getEstimatedDeliveryMin(), zone.getEstimatedDeliveryMax(), pickupAvailable, availableMethods, methodAvailable ? "Delivery available" : "Selected delivery method is unavailable for this address");
+    String locationId = zone.getLocationId() == null || zone.getLocationId().isBlank()
+        ? canonicalStoreLocation(store) : zone.getLocationId().trim();
+    return new DeliveryQuoteResponse(storeId, store.getLatitude(), store.getLongitude(), customerLatitude, customerLongitude, methodAvailable, distance, route.distanceMeters(), route.durationSeconds(), route.durationMinutes(), matchedZoneLabel(zone), route.geometry(), zone.getId(), selectedMethod, charge, zone.getFreeDeliveryAbove(), freeDeliveryApplied, zone.getMinimumOrder(), zone.getEstimatedDeliveryMin(), zone.getEstimatedDeliveryMax(), pickupAvailable, availableMethods, methodAvailable ? "Delivery available" : "Selected delivery method is unavailable for this address", locationId);
   }
 
   private BigDecimal straightLineDistanceKm(BigDecimal storeLatitude, BigDecimal storeLongitude, BigDecimal customerLatitude, BigDecimal customerLongitude) {
@@ -150,7 +166,7 @@ public class StoreDeliveryService {
       availableForDelivery, route.distanceKm(), route.distanceMeters(), route.durationSeconds(), route.durationMinutes(),
       "Store radius " + radius + " KM", route.geometry(), null, selected, charge, freeAbove, free, null,
       store.getDeliveryEtaMinutes(), store.getDeliveryEtaMinutes(), pickupAvailable, available,
-      availableForDelivery ? "Delivery available within store radius" : "No delivery method is configured for this store");
+      availableForDelivery ? "Delivery available within store radius" : "No delivery method is configured for this store", canonicalStoreLocation(store));
   }
 
   @Transactional(readOnly = true)
@@ -161,10 +177,8 @@ public class StoreDeliveryService {
     if (locations.isEmpty()) locations = zones.findMappedLocationIdsForStoreRegion(store.getLocation()).stream()
       .filter(java.util.Objects::nonNull).map(String::trim).filter(value -> !value.isBlank()).distinct().toList();
     if (locations.size() == 1) return new DeliveryZoneLocationResponse(null, storeId, locations.getFirst());
-    if (locations.isEmpty() && store.getLocation() != null && !store.getLocation().isBlank()) {
-      return new DeliveryZoneLocationResponse(null, storeId, store.getLocation().trim());
-    }
-    throw new IllegalArgumentException("Store delivery location mapping is missing or ambiguous.");
+    String locationId = locations.size() > 1 ? null : canonicalStoreLocation(store);
+    return new DeliveryZoneLocationResponse(null, storeId, locationId);
   }
 
   private String resolveZoneLocation(StoreDeliveryZone zone) {
@@ -181,7 +195,18 @@ public class StoreDeliveryService {
         : zones.findMappedLocationIdsForStoreRegion(store.getLocation().trim()).stream()
             .filter(java.util.Objects::nonNull).map(String::trim).filter(value -> !value.isBlank()).distinct().toList();
     if (region.size() == 1) return region.getFirst();
-    throw new IllegalArgumentException("Store delivery location mapping is missing or ambiguous. Configure the store's location before saving delivery radius rules.");
+    return canonicalStoreLocation(store);
+  }
+
+  private String canonicalStoreLocation(Store store) {
+    for (String candidate : List.of(
+        store.getLocation() == null ? "" : store.getLocation(),
+        store.getArea() == null ? "" : store.getArea(),
+        store.getCity() == null ? "" : store.getCity(),
+        store.getId() == null ? "" : store.getId())) {
+      if (!candidate.isBlank()) return candidate.trim();
+    }
+    throw new IllegalArgumentException("Set the store's service location before saving delivery radius rules.");
   }
 
   private Store requireStore(String id) {

@@ -12,6 +12,6 @@ WORKDIR /app
 
 COPY --from=buildlify /workspace/target/*.jar app.jar
 
-EXPOSE 8083
+EXPOSE 53310
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

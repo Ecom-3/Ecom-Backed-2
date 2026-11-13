@@ -25,12 +25,12 @@ public class PublicInventoryAvailabilityController {
       @RequestParam(required = false) UUID variantId, @RequestParam String storeId) {
     try {
       if (!catalog.hasActiveProductMapping(storeId, productId))
-        return new PublicInventoryAvailabilityResponse(productId, variantId, storeId, false);
+        return new PublicInventoryAvailabilityResponse(productId, variantId, storeId, false, false);
     } catch (org.springframework.web.client.RestClientException error) {
       throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
           "Product availability is temporarily unavailable.");
     }
-    return new PublicInventoryAvailabilityResponse(productId, variantId, storeId,
-        inventories.isPubliclyAvailable(productId, variantId, storeId));
+    PublicStockStatus status = inventories.getPublicStockStatus(productId, variantId, storeId);
+    return new PublicInventoryAvailabilityResponse(productId, variantId, storeId, status.available(), status.lowStock());
   }
 }

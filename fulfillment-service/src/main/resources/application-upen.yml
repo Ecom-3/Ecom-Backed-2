@@ -1,5 +1,5 @@
 server:
-  port: 3315
+  port: 53315
 app:
   jwt:
     secret: "${JWT_SECRET:change-this-secret-to-a-long-random-string}"
@@ -8,7 +8,7 @@ spring:
   application:
     name: fulfillment-service
   config:
-    import: "optional:configserver:http://localhost:8888"
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:58888}"
   sql:
     init:
       mode: never
@@ -33,7 +33,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:58761/eureka}
 management:
   endpoints:
     web:
@@ -50,9 +50,9 @@ sync:
     payment-service: ${PAYMENT_SYNC_KEY:}
     fulfillment-service: ${FULFILLMENT_SYNC_KEY:}
   targets:
-    order-service: ${ORDER_SERVICE_URL:http://localhost:3311}
-    payment-service: ${PAYMENT_SERVICE_URL:http://localhost:3314}
-    fulfillment-service: ${FULFILLMENT_SERVICE_URL:http://localhost:3315}
-    notification-service: ${NOTIFICATION_SERVICE_URL:http://localhost:3317}
+    order-service: ${ORDER_SERVICE_URL:http://localhost:53311}
+    payment-service: ${PAYMENT_SERVICE_URL:http://localhost:53314}
+    fulfillment-service: ${FULFILLMENT_SERVICE_URL:http://localhost:53315}
+    notification-service: ${NOTIFICATION_SERVICE_URL:http://localhost:53317}
   routes:
     fulfillment: notification-service

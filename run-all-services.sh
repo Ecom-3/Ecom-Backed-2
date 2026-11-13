@@ -98,8 +98,19 @@ MYSQL_USERNAME="${MYSQL_USERNAME:-root}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
 KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
 export MYSQL_HOST MYSQL_PORT MYSQL_USERNAME MYSQL_PASSWORD KAFKA_BOOTSTRAP_SERVERS
-export CONFIG_SERVER_URL="http://localhost:8888"
-export EUREKA_SERVER_URL="http://localhost:8761/eureka"
+export CONFIG_SERVER_URL="http://localhost:58888"
+export EUREKA_SERVER_URL="http://localhost:58761/eureka"
+export ORDER_SERVICE_URL="http://127.0.0.1:53311"
+export ORDERS_SERVICE_URL="$ORDER_SERVICE_URL"
+export PAYMENT_SERVICE_URL="http://127.0.0.1:53314"
+export FULFILLMENT_SERVICE_URL="http://127.0.0.1:53315"
+export NOTIFICATION_SERVICE_URL="http://127.0.0.1:53317"
+export NOTIFICATIONS_SERVICE_URL="$NOTIFICATION_SERVICE_URL"
+export CATALOG_SERVICE_URL="http://127.0.0.1:58089"
+export CART_SERVICE_URL="http://127.0.0.1:58091"
+export ORG_ACCESS_SERVICE_URL="http://127.0.0.1:53310"
+export ORG_ACCESS_URL="$ORG_ACCESS_SERVICE_URL"
+export INVENTORY_SERVICE_URL="http://127.0.0.1:58095"
 export FLYWAY_ENABLED=false
 export SPRING_FLYWAY_ENABLED=false
 export SPRING_JPA_HIBERNATE_DDL_AUTO=validate
@@ -172,20 +183,20 @@ fi
 
 service_port() {
     case "$1" in
-        Ecom-eureka-server) printf '8761' ;;
-        Ecom-config-server) printf '8888' ;;
-        Ecom-Org-access) printf '3310' ;;
-        customer-profile-service) printf '8088' ;;
-        catalog-service) printf '8089' ;;
-        inventory-service) printf '8095' ;;
-        cart-service) printf '8091' ;;
-        order-service) printf '3311' ;;
-        payment-service) printf '3314' ;;
-        fulfillment-service) printf '3315' ;;
-        notification-service) printf '3317' ;;
-        Ecom-api-gateway) printf '8082' ;;
-        Ecom-Alerts) printf '8087' ;;
-        Ecom-frontend) printf '5173' ;;
+        Ecom-eureka-server) printf '58761' ;;
+        Ecom-config-server) printf '58888' ;;
+        Ecom-Org-access) printf '53310' ;;
+        customer-profile-service) printf '58088' ;;
+        catalog-service) printf '58089' ;;
+        inventory-service) printf '58095' ;;
+        cart-service) printf '58091' ;;
+        order-service) printf '53311' ;;
+        payment-service) printf '53314' ;;
+        fulfillment-service) printf '53315' ;;
+        notification-service) printf '53317' ;;
+        Ecom-api-gateway) printf '58082' ;;
+        Ecom-Alerts) printf '58087' ;;
+        Ecom-frontend) printf '55173' ;;
         *) return 1 ;;
     esac
 }
@@ -644,11 +655,11 @@ start_service() {
                 return 1
             fi
         fi
-        nohup bash -c 'cd "$1" || exit; exec node --title=launcher.service.name=Ecom-frontend node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173 --strictPort' \
-            'launcher.service.name=Ecom-frontend' "$directory" >"$LOG_DIR/$name.log" 2>&1 </dev/null &
+        nohup bash -c 'cd "$1" || exit; exec node --title=launcher.service.name=Ecom-frontend node_modules/vite/bin/vite.js --host 127.0.0.1 --port 55173 --strictPort' \
+            launcher.service.name=Ecom-frontend "$directory" >"$LOG_DIR/$name.log" 2>&1 </dev/null &
     else
-        nohup bash -c 'cd "$1" || exit; exec mvn "$0" -DskipTests spring-boot:run' \
-            "-Dlauncher.service.name=$name" "$directory" >"$LOG_DIR/$name.log" 2>&1 </dev/null &
+        nohup bash -c 'cd "$1" || exit; export SERVER_PORT="$2" SERVER_ADDRESS=127.0.0.1; if [[ "$3" == Ecom-eureka-server ]]; then export EUREKA_CLIENT_ENABLED=true; else export EUREKA_CLIENT_ENABLED=false; fi; exec mvn "$0" -DskipTests spring-boot:run' \
+            "-Dlauncher.service.name=$name" "$directory" "$port" "$name" >"$LOG_DIR/$name.log" 2>&1 </dev/null &
     fi
     pid=$!
     printf '%s\n' "$pid" > "$pid_file"
@@ -692,5 +703,5 @@ done
 if ((START_FRONTEND)); then start_service Ecom-frontend; fi
 
 printf '\nStartup requested for: %s\n' "${SELECTED_SERVICES[*]}"
-if ((START_FRONTEND)); then printf 'Frontend: http://127.0.0.1:5173\n'; fi
-printf 'Gateway:  http://localhost:8082\nEureka:   http://localhost:8761\nLogs:     %s\n' "$LOG_DIR"
+if ((START_FRONTEND)); then printf 'Frontend: http://127.0.0.1:55173\n'; fi
+printf 'Gateway:  http://localhost:58082\nEureka:   http://localhost:58761\nLogs:     %s\n' "$LOG_DIR"

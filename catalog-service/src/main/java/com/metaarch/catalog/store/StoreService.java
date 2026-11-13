@@ -15,11 +15,16 @@ public class StoreService {
 
   @Transactional
   public StoreResponse create(StoreRequest request) {
+    return create(request, request.location());
+  }
+
+  @Transactional
+  public StoreResponse create(StoreRequest request, String authorizedLocation) {
     String id = clean(request.id());
     if (stores.existsById(id)) throw new ConflictException("Store ID already exists");
     if (stores.existsByNameIgnoreCase(clean(request.name()))) throw new ConflictException("Store name already exists");
     Store store = new Store(id);
-    apply(store, request);
+    apply(store, request, authorizedLocation);
     return StoreResponse.from(stores.save(store));
   }
 
@@ -45,7 +50,7 @@ public class StoreService {
     Store store = find(id);
     String name = clean(request.name());
     if (stores.existsByNameIgnoreCaseAndIdNot(name, id)) throw new ConflictException("Store name already exists");
-    apply(store, request);
+    apply(store, request, request.location());
     return StoreResponse.from(store);
   }
 
@@ -56,12 +61,12 @@ public class StoreService {
     return stores.findById(clean(id)).orElseThrow(() -> new ResourceNotFoundException("Store not found: " + id));
   }
 
-  private void apply(Store store, StoreRequest request) {
+  private void apply(Store store, StoreRequest request, String authorizedLocation) {
     store.setName(clean(request.name()));
     store.setStoreCode(blank(request.storeCode()));
     store.setLogoUrl(blank(request.logoUrl()));
     store.setDescription(blank(request.description()));
-    store.setLocation(clean(request.location()));
+    store.setLocation(clean(authorizedLocation));
     store.setAddress(clean(request.address()));
     store.setDoorNumber(blank(request.doorNumber()));
     store.setStreetName(blank(request.streetName()));
@@ -97,7 +102,7 @@ public class StoreService {
     store.setActive(request.active());
   }
 
-  private BigDecimal scale(BigDecimal value) { return value.setScale(7, RoundingMode.HALF_UP); }
+  private BigDecimal scale(BigDecimal value) { return value == null ? null : value.setScale(7, RoundingMode.HALF_UP); }
   private String clean(String value) { return value.trim(); }
   private String blank(String value) { return value == null || value.isBlank() ? null : value.trim(); }
 }

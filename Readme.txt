@@ -7,9 +7,9 @@ To also include legacy alerts and Kafka:
 .\run-all-services.ps1 start -StartFrontend -EnableLegacyAlerts
 You need Java 21, Maven, MySQL with the required schemas, and your .env configuration. The frontend also requires Node.js/npm. Missing passwords or synchronization keys will prompt you for input.
 Once started:
-- Frontend: http://127.0.0.1:5173
-- API gateway: http://localhost:8082
-- Eureka: http://localhost:8761
+- Frontend: http://127.0.0.1:55173
+- API gateway: http://localhost:58082
+- Eureka: http://localhost:58761
 - Logs: D:\ecom\Ecom\.local\logs
 Restart or stop backend services:
 .\run-all-services.ps1 restart
@@ -17,8 +17,8 @@ Restart or stop backend services:
 If you started the frontend, stop it separately:
 .\run-all-services.ps1 stop frontend
 
-Test-NetConnection localhost -Port 8082
-Invoke-RestMethod http://localhost:8082/actuator/health
+Test-NetConnection localhost -Port 58082
+Invoke-RestMethod http://localhost:58082/actuator/health
 
 macOS and Linux
 ---------------

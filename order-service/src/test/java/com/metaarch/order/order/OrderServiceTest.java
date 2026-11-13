@@ -38,7 +38,8 @@ class OrderServiceTest {
       return order;
     });
 
-    CreateOrderRequest request = request();
+    UUID sourceAddressId = UUID.randomUUID();
+    CreateOrderRequest request = request(sourceAddressId.toString());
     when(catalogDeliveryQuoteClient.verify("store-1", new BigDecimal("17.4400000"), new BigDecimal("78.5000000"), new BigDecimal("39.98"), "Standard Delivery"))
       .thenReturn(new CatalogDeliveryQuoteClient.DeliveryQuote("store-1", new BigDecimal("17.4500000"), new BigDecimal("78.4900000"), new BigDecimal("17.4400000"), new BigDecimal("78.5000000"), true, new BigDecimal("4.25"), 4250L, 720, 12, "3-5 KM", null, 2L, "Standard Delivery", BigDecimal.ZERO, new BigDecimal("499.00"), false, new BigDecimal("100.00"), 20, 30, false, List.of(), "Delivery available"));
     when(catalogDeliveryQuoteClient.resolveLocation(2L)).thenReturn(new CatalogDeliveryQuoteClient.DeliveryZoneLocation(2L, "store-1", "hyderabad"));
@@ -53,6 +54,7 @@ class OrderServiceTest {
     assertThat(response.routeDistanceMeters()).isEqualTo(4250L);
     assertThat(response.matchedZoneLabel()).isEqualTo("3-5 KM");
     assertThat(response.items()).hasSize(1);
+    assertThat(response.addresses()).singleElement().extracting(OrderAddressResponse::sourceAddressId).isEqualTo(sourceAddressId.toString());
     ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
     verify(events).publish(eq(OrderEventType.ORDER_CREATED), orderCaptor.capture());
     assertThat(orderCaptor.getValue().getLocationId()).isEqualTo("hyderabad");
@@ -247,12 +249,16 @@ class OrderServiceTest {
   }
 
   private CreateOrderRequest request() {
+    return request(null);
+  }
+
+  private CreateOrderRequest request(String sourceAddressId) {
     return new CreateOrderRequest(
       UUID.randomUUID(),
       UUID.randomUUID(),
       "store-1",
       List.of(new CreateOrderItemRequest(UUID.randomUUID(), null, "Keyboard", 2, new BigDecimal("19.99"))),
-      List.of(new CreateOrderAddressRequest(AddressType.SHIPPING, "Line 1", null, "Hyderabad", "Telangana", "India", "500001", null, null)),
+      List.of(new CreateOrderAddressRequest(AddressType.SHIPPING, "Line 1", null, "Hyderabad", "Telangana", "India", "500001", null, null, sourceAddressId)),
       null,
       null,
       null,

@@ -24,8 +24,8 @@ mvn spring-boot:run
 Default local URLs use:
 
 ```text
-Base URL: http://localhost:8091
-MySQL:    localhost:3310
+Base URL: ${CART_SERVICE_URL:http://localhost:58091}
+MySQL:    localhost:53310
 Database: cart_service
 Username: root
 Password: root123
@@ -45,7 +45,7 @@ Use header `Content-Type: application/json` for request bodies.
 Create cart:
 
 ```http
-POST http://localhost:8091/api/v1/carts
+POST ${CART_SERVICE_URL:http://localhost:58091}/api/v1/carts
 ```
 
 ```json
@@ -58,19 +58,19 @@ POST http://localhost:8091/api/v1/carts
 Get cart:
 
 ```http
-GET http://localhost:8091/api/v1/carts/{{cartId}}
+GET ${CART_SERVICE_URL:http://localhost:58091}/api/v1/carts/{{cartId}}
 ```
 
 Get active cart:
 
 ```http
-GET http://localhost:8091/api/v1/carts/active?customerId=11111111-1111-1111-1111-111111111111&storeId=main-store
+GET ${CART_SERVICE_URL:http://localhost:58091}/api/v1/carts/active?customerId=11111111-1111-1111-1111-111111111111&storeId=main-store
 ```
 
 Add item:
 
 ```http
-POST http://localhost:8091/api/v1/carts/{{cartId}}/items
+POST ${CART_SERVICE_URL:http://localhost:58091}/api/v1/carts/{{cartId}}/items
 ```
 
 ```json
@@ -86,7 +86,7 @@ POST http://localhost:8091/api/v1/carts/{{cartId}}/items
 Update item quantity:
 
 ```http
-PATCH http://localhost:8091/api/v1/carts/{{cartId}}/items/{{itemId}}
+PATCH ${CART_SERVICE_URL:http://localhost:58091}/api/v1/carts/{{cartId}}/items/{{itemId}}
 ```
 
 ```json
@@ -98,17 +98,17 @@ PATCH http://localhost:8091/api/v1/carts/{{cartId}}/items/{{itemId}}
 Remove item:
 
 ```http
-DELETE http://localhost:8091/api/v1/carts/{{cartId}}/items/{{itemId}}
+DELETE ${CART_SERVICE_URL:http://localhost:58091}/api/v1/carts/{{cartId}}/items/{{itemId}}
 ```
 
 Clear cart:
 
 ```http
-DELETE http://localhost:8091/api/v1/carts/{{cartId}}/items
+DELETE ${CART_SERVICE_URL:http://localhost:58091}/api/v1/carts/{{cartId}}/items
 ```
 
 Calculate cart total:
 
 ```http
-POST http://localhost:8091/api/v1/carts/{{cartId}}/calculate-total
+POST ${CART_SERVICE_URL:http://localhost:58091}/api/v1/carts/{{cartId}}/calculate-total
 ```

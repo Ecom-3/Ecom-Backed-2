@@ -86,9 +86,8 @@ public class OrderService {
       order.setDiscountAmount(money(promotion.discountAmount()));
     }
     applyVerifiedDeliverySnapshot(order, request, itemSubtotal(order));
-    resolveDeliveryZoneLocation(order, request);
     order.setHandlingFee(isGlobal(request) ? BigDecimal.ZERO : new BigDecimal("5.00"));
-    addresses.forEach(address -> order.addAddress(new OrderAddress(address.addressType(), address.addressLine1().trim(), trimToNull(address.addressLine2()), address.city().trim(), address.state().trim(), address.country().trim(), address.postalCode().trim(), trimToNull(address.recipientName()), trimToNull(address.recipientPhone()))));
+    addresses.forEach(address -> order.addAddress(new OrderAddress(address.addressType(), address.addressLine1().trim(), trimToNull(address.addressLine2()), address.city().trim(), address.state().trim(), address.country().trim(), address.postalCode().trim(), trimToNull(address.recipientName()), trimToNull(address.recipientPhone()), trimToNull(address.sourceAddressId()))));
     calculate(order);
     return order;
   }
@@ -306,6 +305,7 @@ public class OrderService {
       orderSubtotal,
       request.deliveryMethod());
     order.setDeliveryZoneId(quote.deliveryZoneId());
+    order.setLocationId(trimToNull(quote.locationId()));
     order.setCalculatedDistanceKm(scaleOrNull(quote.distanceKm(), 2));
     order.setRouteDistanceMeters(quote.routeDistanceMeters());
     order.setRouteDurationSeconds(quote.routeDurationSeconds());
@@ -324,17 +324,6 @@ public class OrderService {
     order.setScheduledDeliveryDate(request.scheduledDeliveryDate());
     order.setScheduledDeliverySlot(trimToNull(request.scheduledDeliverySlot()));
     order.setPickupDetails(trimToNull(request.pickupDetails()));
-  }
-
-  private void resolveDeliveryZoneLocation(Order order, CreateOrderRequest request) {
-    if (order.getDeliveryZoneId() == null) {
-      if (isGlobal(request) || isPickup(request)) return;
-      CatalogDeliveryQuoteClient.DeliveryZoneLocation location = catalogDeliveryQuoteClient.resolveStoreLocation(order.getStoreId());
-      order.setLocationId(location.locationId().trim());
-      return;
-    }
-    CatalogDeliveryQuoteClient.DeliveryZoneLocation location = catalogDeliveryQuoteClient.resolveLocation(order.getDeliveryZoneId());
-    order.setLocationId(location.locationId().trim());
   }
 
   private boolean hasDeliverySnapshot(CreateOrderRequest request) {
@@ -459,7 +448,8 @@ public class OrderService {
       address.country(),
       address.postalCode(),
       address.recipientName(),
-      address.recipientPhone());
+      address.recipientPhone(),
+      address.sourceAddressId());
   }
 
   private String nextOrderNumber() {

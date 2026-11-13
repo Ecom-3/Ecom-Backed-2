@@ -22,8 +22,8 @@ public class Store extends AuditedEntity {
   @Column(length = 120) private String district;
   @Column(length = 120) private String state;
   @Column(length = 20) private String pincode;
-  @Column(nullable = false, precision = 10, scale = 7) private BigDecimal latitude;
-  @Column(nullable = false, precision = 10, scale = 7) private BigDecimal longitude;
+  @Column(precision = 10, scale = 7) private BigDecimal latitude;
+  @Column(precision = 10, scale = 7) private BigDecimal longitude;
   @Column(nullable = false, length = 40) private String provider = "OPENSTREETMAP";
   @Column(name = "provider_place_id", length = 120) private String providerPlaceId;
   @Column(name = "provider_osm_type", length = 20) private String providerOsmType;

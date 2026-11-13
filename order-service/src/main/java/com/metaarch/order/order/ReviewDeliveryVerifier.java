@@ -15,7 +15,7 @@ public class ReviewDeliveryVerifier {
   private final RestClient client;
   private final ObjectMapper mapper;
 
-  public ReviewDeliveryVerifier(@Value("${FULFILLMENT_SERVICE_URL:http://127.0.0.1:3315}") String baseUrl, ObjectMapper mapper) {
+  public ReviewDeliveryVerifier(@Value("${FULFILLMENT_SERVICE_URL:http://127.0.0.1:53315}") String baseUrl, ObjectMapper mapper) {
     var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
     factory.setConnectTimeout(3000);
     factory.setReadTimeout(5000);

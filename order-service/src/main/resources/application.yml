@@ -1,5 +1,5 @@
 server:
-  port: 3311
+  port: 53311
 
 checkout:
   multi-store:
@@ -17,7 +17,7 @@ spring:
     name: order-service
 
   config:
-    import: "optional:configserver:http://localhost:8888"
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:58888}"
 
   sql:
     init:
@@ -43,12 +43,12 @@ spring:
 
 catalog:
   service:
-    url: http://localhost:8089
+    url: ${CATALOG_SERVICE_URL:http://localhost:58089}
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:58761/eureka}
 
 management:
   endpoints:
@@ -69,10 +69,10 @@ sync:
     inventory-service: ${INVENTORY_SYNC_KEY:}
 
   targets:
-    payment-service: ${PAYMENT_SERVICE_URL:http://localhost:3314}
-    fulfillment-service: ${FULFILLMENT_SERVICE_URL:http://localhost:3315}
-    notification-service: ${NOTIFICATION_SERVICE_URL:http://localhost:3317}
-    inventory-service: ${INVENTORY_SERVICE_URL:http://localhost:8095}
+    payment-service: ${PAYMENT_SERVICE_URL:http://localhost:53314}
+    fulfillment-service: ${FULFILLMENT_SERVICE_URL:http://localhost:53315}
+    notification-service: ${NOTIFICATION_SERVICE_URL:http://localhost:53317}
+    inventory-service: ${INVENTORY_SERVICE_URL:http://localhost:58095}
 
   routes:
     order: payment-service,fulfillment-service,notification-service

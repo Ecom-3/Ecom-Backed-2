@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:3310}
+  port: ${SERVER_PORT:53310}
 
 spring:
   sql:
@@ -42,6 +42,6 @@ app:
 # Downstream services called by the delivery-partner operations endpoints.
 # Host defaults for native runs; override with container hostnames in Docker.
 services:
-  orders-url: "${ORDERS_SERVICE_URL:http://localhost:3311}"
-  fulfillment-url: "${FULFILLMENT_SERVICE_URL:http://localhost:3315}"
-  notifications-url: "${NOTIFICATIONS_SERVICE_URL:http://localhost:3317}"
+  orders-url: "${ORDERS_SERVICE_URL:${ORDER_SERVICE_URL:http://localhost:53311}}"
+  fulfillment-url: "${FULFILLMENT_SERVICE_URL:http://localhost:53315}"
+  notifications-url: "${NOTIFICATIONS_SERVICE_URL:${NOTIFICATION_SERVICE_URL:http://localhost:53317}}"

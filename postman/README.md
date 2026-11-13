@@ -6,7 +6,7 @@
 4. Run folders **01**, **02**, and **03** with the Collection Runner. They require no credentials.
 5. Set `username` and `password` to an existing account's credentials in the selected environment, then run folder **04** in order. Login saves `access_token` automatically. Keep credentials and captured tokens local; do not commit exported populated environments.
 
-The default gateway URL is `http://localhost:8082`. Change `gateway_url` if needed, without a trailing slash. Set `frontend_origin` to your frontend's origin for the CORS test.
+The default gateway URL is `http://localhost:58082`. Change `gateway_url` if needed, without a trailing slash. Set `frontend_origin` to your frontend's origin for the CORS test.
 
 The collection contains 22 requests covering gateway health, all core service route prefixes (including cart, order and fulfillment aliases), an org-access ping, payment capabilities, missing routes, rejected authentication, CORS preflight, login and token validation. It does not create business records. Login can update authentication audit/rate-limit state.
 
@@ -22,8 +22,8 @@ Expected results:
 
 Troubleshooting:
 
-- Connection refused: check that the gateway is running on port 8082.
-- HTTP 503 on a service route: check the service and its Eureka registration at `http://localhost:8761`.
+- Connection refused: check that the gateway is running on port 58082.
+- HTTP 503 on a service route: check the service and its Eureka registration at `http://localhost:58761`.
 - HTTP 404 on a configured route: check the config server and gateway route configuration; the gateway removes the first path segment before forwarding.
 - HTTP 401/403 on login or identity checks: check the account credentials and token. These are downstream authentication checks through the gateway, not evidence of gateway-level authentication.
 - Failed health status: inspect the relevant service's dependencies and logs in `D:\ecom\Ecom\.local\logs`.

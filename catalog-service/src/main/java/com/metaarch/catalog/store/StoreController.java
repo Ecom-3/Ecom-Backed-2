@@ -19,8 +19,9 @@ public class StoreController {
 
   @PostMapping
   ResponseEntity<StoreResponse> create(@Valid @RequestBody StoreRequest request, Authentication auth) {
-    if (!access.canCreateStore(auth, request.location())) throw new org.springframework.security.access.AccessDeniedException("Store must belong to your assigned location.");
-    StoreResponse store = service.create(request);
+    String authorizedLocation = access.authorizedStoreLocation(auth, request.location());
+    if (authorizedLocation == null) throw new org.springframework.security.access.AccessDeniedException("Choose your assigned location to create this store.");
+    StoreResponse store = service.create(request, authorizedLocation);
     return ResponseEntity.created(URI.create("/api/v1/stores/" + store.id())).body(store);
   }
 

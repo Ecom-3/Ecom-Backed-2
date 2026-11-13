@@ -57,6 +57,21 @@ class CartConcurrencyTest {
     assertThat(service.get(cart.id()).totalAmount()).isEqualByComparingTo("0");
   }
 
+  @Test void savedItemDeletionRemovesOnlySavedLineAndKeepsActiveLines() {
+    var cart=cart();
+    var added=operations.add(cart.id(),UUID.randomUUID().toString(),item(UUID.randomUUID(),1));
+    var saved=service.saveForLater(cart.id(),added.items().getFirst().id());
+    var active=operations.add(cart.id(),UUID.randomUUID().toString(),item(UUID.randomUUID(),2));
+    UUID savedId=saved.savedForLaterItems().getFirst().id();
+    var removed=service.removeSavedForLater(cart.id(),savedId);
+    assertThat(removed.savedForLaterItems()).isEmpty();
+    assertThat(removed.items()).hasSize(1);
+    assertThat(removed.items().getFirst().id()).isEqualTo(active.items().getFirst().id());
+    assertThat(removed.totalAmount()).isEqualByComparingTo("20.00");
+    assertThatThrownBy(() -> service.removeSavedForLater(cart.id(),active.items().getFirst().id()))
+      .isInstanceOf(com.metaarch.cart.exception.ResourceNotFoundException.class);
+  }
+
   @Test void claimReplayAllowsUpdatedCheckoutDetailsOnlyWhenCartSnapshotIsUnchanged() {
     var cart=cart(); UUID product=UUID.randomUUID();operations.add(cart.id(),UUID.randomUUID().toString(),item(product,1));
     var claim=new CheckoutCartRequest("a".repeat(64),"test-store",List.of(new CheckoutCartRequest.Line(product,null,1)));

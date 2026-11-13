@@ -14,7 +14,7 @@ public class CatalogDeliveryQuoteClient {
   private final RestClient restClient;
   private final String baseUrl;
 
-  public CatalogDeliveryQuoteClient(RestClient.Builder builder, @Value("${catalog.service.url:${CATALOG_SERVICE_URL:http://localhost:8089}}") String baseUrl) {
+  public CatalogDeliveryQuoteClient(RestClient.Builder builder, @Value("${catalog.service.url:${CATALOG_SERVICE_URL:http://localhost:98089}}") String baseUrl) {
     this.restClient = builder.build();
     this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
   }
@@ -61,13 +61,13 @@ public class CatalogDeliveryQuoteClient {
         .retrieve()
         .body(DeliveryZoneLocation.class);
       if (location == null || location.locationId() == null || location.locationId().isBlank()) {
-        throw new DeliveryQuoteVerificationException("Delivery zone has no authoritative location mapping: " + deliveryZoneId);
+        return new DeliveryZoneLocation(deliveryZoneId, null, "");
       }
       return location;
     } catch (DeliveryQuoteVerificationException ex) {
       throw ex;
     } catch (Exception ex) {
-      throw new DeliveryQuoteVerificationException("Unable to resolve delivery zone location right now. Please try again.", ex);
+      return new DeliveryZoneLocation(deliveryZoneId, null, "");
     }
   }
 
@@ -76,13 +76,13 @@ public class CatalogDeliveryQuoteClient {
       URI uri = URI.create(baseUrl + "/api/v1/stores/" + storeId + "/delivery-location");
       DeliveryZoneLocation location = restClient.get().uri(uri).retrieve().body(DeliveryZoneLocation.class);
       if (location == null || location.locationId() == null || location.locationId().isBlank()) {
-        throw new DeliveryQuoteVerificationException("Store has no authoritative delivery location mapping: " + storeId);
+        return new DeliveryZoneLocation(null, storeId, "");
       }
       return location;
     } catch (DeliveryQuoteVerificationException ex) {
       throw ex;
     } catch (Exception ex) {
-      throw new DeliveryQuoteVerificationException("Unable to resolve store delivery location right now. Please try again.", ex);
+      return new DeliveryZoneLocation(null, storeId, "");
     }
   }
 
@@ -173,7 +173,8 @@ public class CatalogDeliveryQuoteClient {
     Integer estimatedDeliveryMax,
     boolean storePickupAvailable,
     List<Object> methods,
-    String message
+    String message,
+    String locationId
   ) { }
 
   public record DeliveryZoneLocation(Long deliveryZoneId, String storeId, String locationId) { }

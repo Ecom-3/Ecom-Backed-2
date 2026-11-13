@@ -22,7 +22,7 @@ public class UserController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('SUPER_ADMIN','LOCATION_ADMIN')")
+  @PreAuthorize("hasRole('SUPER_ADMIN')")
   public UserSummary create(@Valid @RequestBody UserCreateRequest request, Authentication authentication) {
     UserAccount user = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_LOCATION_ADMIN"))
         ? identities.createManagedStoreManager(request, authentication.getName())
@@ -31,13 +31,13 @@ public class UserController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('SUPER_ADMIN','LOCATION_ADMIN')")
+  @PreAuthorize("hasRole('SUPER_ADMIN')")
   public java.util.List<IdentityService.StaffSummary> list(Authentication authentication) {
     return identities.listStaff(authentication.getName());
   }
 
   @PutMapping("/{id}")
-  @PreAuthorize("hasAnyRole('SUPER_ADMIN','LOCATION_ADMIN')")
+  @PreAuthorize("hasRole('SUPER_ADMIN')")
   public UserSummary update(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest request,
       Authentication authentication) {
     UserAccount user = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_LOCATION_ADMIN"))
@@ -55,7 +55,7 @@ public class UserController {
 
   @PostMapping("/{id}/password-reset")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('SUPER_ADMIN','LOCATION_ADMIN')")
+  @PreAuthorize("hasRole('SUPER_ADMIN')")
   public void resetStoreManagerPassword(@PathVariable Long id,
       @Valid @RequestBody StaffPasswordResetRequest request, Authentication authentication) {
     boolean locationAdmin = authentication.getAuthorities().stream()

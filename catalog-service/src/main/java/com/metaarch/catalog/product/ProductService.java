@@ -42,7 +42,7 @@ import java.util.UUID; import java.util.*; import com.metaarch.catalog.category.
   String term=search==null||search.isBlank()?null:search.trim();
   Map<UUID,Boolean> availability=new HashMap<>();
   storeProducts.findByStoreId(storeId).forEach(mapping->availability.put(mapping.getProduct().getId(),mapping.isAvailable()));
-  return PageResponse.from(products.searchAvailableInStore(storeId,categoryId,status,term,pageable),product->ProductResponse.from(product,availability.get(product.getId())));
+  return PageResponse.from(products.searchOwnedByStore(storeId,categoryId,status,term,pageable),product->ProductResponse.from(product,availability.get(product.getId())));
  }
  @Transactional public ProductResponse createForStoreManager(ProductRequest request,Boolean available,Authentication auth){
   String storeId=requiredStoreManagerStore(auth); Store store=requireAssignedStore(auth,storeId);

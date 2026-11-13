@@ -51,6 +51,14 @@ public class OpenRouteServiceClient {
       Number distance = (Number) summary.get("distance");
       Number duration = (Number) summary.get("duration");
       if (distance == null || duration == null) throw new RouteUnavailableException("Route distance or duration was not returned.");
+      double straightLineMeters = haversineKm(storeLatitude.doubleValue(), storeLongitude.doubleValue(),
+        customerLatitude.doubleValue(), customerLongitude.doubleValue()) * 1000.0;
+      // A routing provider can occasionally return a geographically impossible
+      // route (for example, thousands of kilometres between nearby addresses).
+      // Do not let that bad response reject an otherwise local delivery quote.
+      if (distance.doubleValue() > Math.max(50_000.0, straightLineMeters * 8.0 + 10_000.0)) {
+        return fallbackRoute(storeLatitude, storeLongitude, customerLatitude, customerLongitude);
+      }
       return new RouteResult(distance.longValue(), duration.intValue(), feature.get("geometry"));
     } catch (RouteUnavailableException ex) {
       throw ex;

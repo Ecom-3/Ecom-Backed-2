@@ -2,7 +2,7 @@ spring:
   application:
     name: api-gateway
   config:
-    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:58888}"
   cloud:
     gateway:
       default-filters:
@@ -31,7 +31,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: "${EUREKA_SERVER_URL:http://localhost:8761/eureka}"
+      defaultZone: "${EUREKA_SERVER_URL:http://localhost:58761/eureka}"
 
 management:
   endpoints:

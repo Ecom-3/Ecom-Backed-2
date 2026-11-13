@@ -100,21 +100,21 @@ $logDir = Join-Path $localDir "logs"
 $pidDir = Join-Path $localDir "pids"
 $toolsDir = Join-Path $repoDir "tools"
 if (-not (Test-Path $toolsDir)) { $toolsDir = Join-Path $rootDir 'tools' }
-$servicePorts = @{'Ecom-eureka-server'=8761;'Ecom-config-server'=8888;'Ecom-Org-access'=3310;'customer-profile-service'=8088;'catalog-service'=8089;'inventory-service'=8095;'cart-service'=8091;'order-service'=3311;'payment-service'=3314;'fulfillment-service'=3315;'notification-service'=3317;'Ecom-api-gateway'=8082;'Ecom-Alerts'=8087}
+$servicePorts = @{'Ecom-eureka-server'=58761;'Ecom-config-server'=58888;'Ecom-Org-access'=53310;'customer-profile-service'=58088;'catalog-service'=58089;'inventory-service'=58095;'cart-service'=58091;'order-service'=53311;'payment-service'=53314;'fulfillment-service'=53315;'notification-service'=53317;'Ecom-api-gateway'=58082;'Ecom-Alerts'=58087}
 if ($IsolatedTest) {
     foreach ($name in @($servicePorts.Keys)) { $servicePorts[$name] += 10000 }
     $env:SPRING_CLOUD_CONFIG_ENABLED='false'
     $env:EUREKA_CLIENT_ENABLED='false'
     $env:NOTIFICATION_SENDING_ENABLED='false'
-    $env:ORDER_SERVICE_URL='http://127.0.0.1:13311'
-    $env:ORDERS_SERVICE_URL='http://127.0.0.1:13311'
-    $env:PAYMENT_SERVICE_URL='http://127.0.0.1:13314'
-    $env:FULFILLMENT_SERVICE_URL='http://127.0.0.1:13315'
-    $env:NOTIFICATION_SERVICE_URL='http://127.0.0.1:13317'
-    $env:NOTIFICATIONS_SERVICE_URL='http://127.0.0.1:13317'
+    $env:ORDER_SERVICE_URL='http://127.0.0.1:16311'
+    $env:ORDERS_SERVICE_URL='http://127.0.0.1:16311'
+    $env:PAYMENT_SERVICE_URL='http://127.0.0.1:16314'
+    $env:FULFILLMENT_SERVICE_URL='http://127.0.0.1:16315'
+    $env:NOTIFICATION_SERVICE_URL='http://127.0.0.1:16317'
+    $env:NOTIFICATIONS_SERVICE_URL='http://127.0.0.1:16317'
     $env:CATALOG_SERVICE_URL='http://127.0.0.1:18089'
     $env:CART_SERVICE_URL='http://127.0.0.1:18091'
-    $env:ORG_ACCESS_SERVICE_URL='http://127.0.0.1:13310'
+    $env:ORG_ACCESS_SERVICE_URL='http://127.0.0.1:16310'
     $env:CONFIG_SERVER_URL='http://127.0.0.1:18888'
     $env:EUREKA_SERVER_URL='http://127.0.0.1:18761/eureka'
 }
@@ -177,8 +177,8 @@ $env:MYSQL_PORT = $MysqlPort
 $env:MYSQL_USERNAME = $MysqlUsername
 $env:MYSQL_PASSWORD = $MysqlPassword
 if ($EnableLegacyAlerts) { $env:KAFKA_BOOTSTRAP_SERVERS = $KafkaBootstrapServers }
-$env:CONFIG_SERVER_URL = "http://localhost:8888"
-$env:EUREKA_SERVER_URL = "http://localhost:8761/eureka"
+$env:CONFIG_SERVER_URL = "http://localhost:58888"
+$env:EUREKA_SERVER_URL = "http://localhost:58761/eureka"
 $env:FLYWAY_ENABLED = "false"
 $env:SPRING_FLYWAY_ENABLED = "false"
 $env:SPRING_JPA_HIBERNATE_DDL_AUTO = "validate"
@@ -186,6 +186,17 @@ $env:SPRING_SQL_INIT_MODE = "never"
 $env:CUSTOMER_MIGRATION_JDBC_URL = "jdbc:mysql://$MysqlHost`:$MysqlPort/customer_profiles?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
 $env:CUSTOMER_MIGRATION_DB_USER = $MysqlUsername
 $env:CUSTOMER_MIGRATION_DB_PASSWORD = $MysqlPassword
+$env:ORDER_SERVICE_URL = 'http://127.0.0.1:53311'
+$env:ORDERS_SERVICE_URL = $env:ORDER_SERVICE_URL
+$env:PAYMENT_SERVICE_URL = 'http://127.0.0.1:53314'
+$env:FULFILLMENT_SERVICE_URL = 'http://127.0.0.1:53315'
+$env:NOTIFICATION_SERVICE_URL = 'http://127.0.0.1:53317'
+$env:NOTIFICATIONS_SERVICE_URL = $env:NOTIFICATION_SERVICE_URL
+$env:CATALOG_SERVICE_URL = 'http://127.0.0.1:58089'
+$env:CART_SERVICE_URL = 'http://127.0.0.1:58091'
+$env:ORG_ACCESS_SERVICE_URL = 'http://127.0.0.1:53310'
+$env:INVENTORY_SERVICE_URL = 'http://127.0.0.1:58095'
+$env:ORG_ACCESS_URL = $env:ORG_ACCESS_SERVICE_URL
 
 $dependencyKafkaPidFile = Join-Path $pidDir "__launcher-kafka.pid"
 $dependencyMysqlMarker = Join-Path $pidDir "__launcher-mysql.started"
@@ -415,7 +426,7 @@ function Clear-ServicePorts {
         if ($servicePorts.ContainsKey($name)) { $requiredPorts[$name] = $servicePorts[$name] }
     }
     if ($Selected -contains 'Ecom-frontend' -or $StartFrontend) {
-        $requiredPorts['Ecom-frontend'] = 5173
+        $requiredPorts['Ecom-frontend'] = 55173
     }
     if ($requiredPorts.Count -eq 0) { return }
 
@@ -529,10 +540,8 @@ function Start-Services {
             if ($Selected -contains $serviceName) {
                 $serviceDir = Join-Path $rootDir $serviceName
                 $command = 'mvn -DskipTests spring-boot:run'
-                if ($IsolatedTest) {
-                    $clientEnabled = if ($serviceName -eq 'Ecom-eureka-server') { 'true' } else { 'false' }
-                    $command = "`$env:SERVER_PORT='$($servicePorts[$serviceName])'; `$env:SERVER_ADDRESS='127.0.0.1'; `$env:EUREKA_CLIENT_ENABLED='$clientEnabled'; $command"
-                }
+                $clientEnabled = if ($serviceName -eq 'Ecom-eureka-server') { 'true' } else { 'false' }
+                $command = "`$env:SERVER_PORT='$($servicePorts[$serviceName])'; `$env:SERVER_ADDRESS='127.0.0.1'; `$env:EUREKA_CLIENT_ENABLED='$clientEnabled'; $command"
                 Start-LocalProcess -Name $serviceName -Directory $serviceDir -Command $command
                 Wait-ServiceHealth -Name $serviceName
             }
@@ -545,7 +554,7 @@ function Start-Services {
 
     if ($Selected -contains 'Ecom-frontend' -or $StartFrontend) {
         $frontendDir = Join-Path $repoDir "Ecom-frontend"
-        Start-LocalProcess -Name "Ecom-frontend" -Directory $frontendDir -Command "if (-not (Test-Path 'node_modules')) { npm.cmd install }; node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173 --strictPort"
+        Start-LocalProcess -Name "Ecom-frontend" -Directory $frontendDir -Command "if (-not (Test-Path 'node_modules')) { npm.cmd install }; node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 55173 --strictPort"
     }
 }
 
@@ -593,6 +602,8 @@ function Assert-SyncSchemas {
             if ($name -eq 'order-service') {
                 $fee = & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --skip-column-names --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$schema' AND table_name='orders' AND column_name='handling_fee' AND data_type='decimal' AND numeric_precision=10 AND numeric_scale=2 AND is_nullable='NO' AND column_default='0.00'"
                 if ($LASTEXITCODE -ne 0 -or [string]$fee -ne '1') { throw 'Order handling_fee requires compatible reviewed V10 schema.' }
+                $sourceAddress = & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --skip-column-names --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$schema' AND table_name='order_addresses' AND column_name='source_address_id' AND data_type='varchar' AND character_maximum_length=64 AND is_nullable='YES'"
+                if ($LASTEXITCODE -ne 0 -or [string]$sourceAddress -ne '1') { throw 'Order order_addresses.source_address_id requires compatible reviewed V20 schema. Apply V20__add_selected_source_address_reference.sql before starting order-service.' }
             }
         }
     } finally { $env:MYSQL_PWD = $oldPassword }
@@ -684,8 +695,8 @@ Write-Host "Local startup requested for: $($selectedServices -join ', ')"
 if ($IsolatedTest) {
     foreach ($name in $selectedServices) { Write-Host "Test service ${name}: http://127.0.0.1:$($servicePorts[$name])" }
 } else {
-    Write-Host "Frontend: http://127.0.0.1:5173"
-    Write-Host "Gateway:  http://localhost:8082"
-    Write-Host "Eureka:   http://localhost:8761"
+    Write-Host "Frontend: http://127.0.0.1:55173"
+    Write-Host "Gateway:  http://localhost:58082"
+    Write-Host "Eureka:   http://localhost:58761"
 }
 Write-Host "Logs:     $logDir"

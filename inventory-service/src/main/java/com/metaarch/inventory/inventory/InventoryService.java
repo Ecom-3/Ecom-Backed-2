@@ -47,12 +47,14 @@ public class InventoryService {
     return inventories.findByProductIdAndVariantKeyAndStoreId(productId, variantKey(variantId), clean(storeId)).map(InventoryResponse::from).orElseThrow(() -> new ResourceNotFoundException("Inventory not found for product, variant and store"));
   }
 
-  @Transactional(readOnly = true) public boolean isPubliclyAvailable(UUID productId, UUID variantId, String storeId) {
+  @Transactional(readOnly = true) public PublicStockStatus getPublicStockStatus(UUID productId, UUID variantId, String storeId) {
     Inventory inventory = inventories.findByProductIdAndVariantKeyAndStoreId(productId, variantKey(variantId), clean(storeId)).orElse(null);
     if (inventory == null && variantId != null) {
       inventory = inventories.findByProductIdAndVariantKeyAndStoreId(productId, NO_VARIANT, clean(storeId)).orElse(null);
     }
-    return inventory != null && inventory.getStatus() == InventoryStatus.ACTIVE && inventory.getAvailableQuantity() > 0;
+    boolean available = inventory != null && inventory.getStatus() == InventoryStatus.ACTIVE && inventory.getAvailableQuantity() > 0;
+    boolean lowStock = available && inventory.getAvailableQuantity() <= inventory.getReorderLevel();
+    return new PublicStockStatus(available, lowStock);
   }
 
   @Transactional(readOnly = true) public PageResponse<InventoryResponse> list(String storeId, InventoryStatus status, Pageable pageable) {

@@ -3,7 +3,7 @@ spring:
     name: org-access
 
   config:
-    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:58888}"
 
   sql:
     init:
@@ -37,14 +37,14 @@ app:
 # Defaults assume every service runs on the host (native `mvn spring-boot:run`).
 # In Docker, override with the container hostnames (e.g. http://order-service:3311).
 services:
-  orders-url: "${ORDERS_SERVICE_URL:http://localhost:3311}"
-  fulfillment-url: "${FULFILLMENT_SERVICE_URL:http://localhost:3315}"
-  notifications-url: "${NOTIFICATIONS_SERVICE_URL:http://localhost:3317}"
+  orders-url: "${ORDERS_SERVICE_URL:${ORDER_SERVICE_URL:http://localhost:53311}}"
+  fulfillment-url: "${FULFILLMENT_SERVICE_URL:http://localhost:53315}"
+  notifications-url: "${NOTIFICATIONS_SERVICE_URL:${NOTIFICATION_SERVICE_URL:http://localhost:53317}}"
 
 eureka:
   client:
     service-url:
-      defaultZone: "${EUREKA_SERVER_URL:http://localhost:8761/eureka}"
+      defaultZone: "${EUREKA_SERVER_URL:http://localhost:58761/eureka}"
 
 management:
   endpoints:

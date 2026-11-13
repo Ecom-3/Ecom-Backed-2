@@ -37,4 +37,6 @@ public class CartController {
   @PatchMapping("/{cartId}/items/{itemId}/save-for-later") public CartResponse saveForLater(@PathVariable UUID cartId, @PathVariable UUID itemId) { return service.saveForLater(cartId, itemId); }
   @PreAuthorize("@cartAccess.owner(#cartId)")
   @PatchMapping("/{cartId}/items/{itemId}/move-to-cart") public CartResponse moveToCart(@PathVariable UUID cartId, @PathVariable UUID itemId) { return service.moveToCart(cartId, itemId); }
+  @PreAuthorize("@cartAccess.owner(#cartId)")
+  @DeleteMapping("/{cartId}/items/{itemId}/saved-for-later") public CartResponse removeSavedForLater(@PathVariable UUID cartId, @PathVariable UUID itemId) { return service.removeSavedForLater(cartId, itemId); }
 }

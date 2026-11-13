@@ -16,7 +16,7 @@ import org.springframework.web.client.*;
 public class CheckoutCartClient {
   private final RestClient http;
   private final String baseUrl;
-  public CheckoutCartClient(RestClient.Builder builder, @Value("${cart.service.url:${CART_SERVICE_URL:http://localhost:8091}}") String url) {
+  public CheckoutCartClient(RestClient.Builder builder, @Value("${cart.service.url:${CART_SERVICE_URL:http://localhost:98091}}") String url) {
     var factory=new JdkClientHttpRequestFactory(java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
     factory.setReadTimeout(Duration.ofSeconds(5));
     http=builder.requestFactory(factory).build(); baseUrl=url.replaceAll("/+$", "");

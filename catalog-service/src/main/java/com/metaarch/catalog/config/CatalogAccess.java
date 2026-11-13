@@ -44,6 +44,7 @@ public class CatalogAccess {
   }
 
   public boolean global(Authentication auth) { return hasAny(auth, GLOBAL); }
+  public boolean superAdmin(Authentication auth) { return has(auth, "ROLE_SUPER_ADMIN"); }
   public boolean globalAdmin(Authentication auth) { return has(auth, "ROLE_GLOBAL_ADMIN"); }
   public boolean locationAdmin(Authentication auth) { return has(auth, "ROLE_LOCATION_ADMIN"); }
   public boolean storeManager(Authentication auth) { return has(auth, "ROLE_STORE_MANAGER"); }
@@ -123,6 +124,12 @@ public class CatalogAccess {
 
   public boolean canCreateStore(Authentication auth, String location) {
     return global(auth) || (locationAdmin(auth) && inLocation(auth, location));
+  }
+
+  public String authorizedStoreLocation(Authentication auth, String requestedLocation) {
+    if (global(auth)) return requestedLocation;
+    String assignedLocation = location(auth);
+    return locationAdmin(auth) && sameLocation(assignedLocation, requestedLocation) ? assignedLocation : null;
   }
 
   public boolean canUpdateStore(Authentication auth, String storeId, String requestedLocation) {
@@ -259,7 +266,7 @@ public class CatalogAccess {
 
   public boolean inLocation(Authentication auth, String location) {
     String scope = location(auth);
-    return scope != null && location != null && scope.equalsIgnoreCase(location.trim());
+    return sameLocation(scope, location);
   }
 
   private boolean ownsBanner(Authentication auth, Banner banner) {
@@ -299,5 +306,17 @@ public class CatalogAccess {
 
   private boolean sameText(String left, String right) {
     return left != null && right != null && left.trim().equalsIgnoreCase(right.trim());
+  }
+
+  private boolean sameLocation(String left, String right) {
+    String leftKey = locationKey(left);
+    return leftKey != null && leftKey.equals(locationKey(right));
+  }
+
+  private String locationKey(String value) {
+    if (value == null || value.isBlank()) return null;
+    String key = value.trim().toLowerCase(java.util.Locale.ROOT);
+    if (key.startsWith("location-")) key = key.substring("location-".length());
+    return key.replace('_', ' ').replace('-', ' ').replaceAll("\\s+", " ").trim();
   }
 }

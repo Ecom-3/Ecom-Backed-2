@@ -43,8 +43,8 @@ public class OrderAccess {
         && "customer".equals(token.getToken().getClaimAsString("accountType"))
         && orders.findById(orderId).map(order -> PublicApiSecurity.owns(order.getCustomerId())).orElse(false);
   }
-  @org.springframework.beans.factory.annotation.Value("${FULFILLMENT_SERVICE_URL:http://127.0.0.1:3315}")
-  private String fulfillmentUrl="http://127.0.0.1:3315";
+  @org.springframework.beans.factory.annotation.Value("${FULFILLMENT_SERVICE_URL:http://127.0.0.1:53315}")
+  private String fulfillmentUrl="http://127.0.0.1:53315";
   private boolean assignedPartner(UUID id) {
     var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
     if (!(auth instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken token)

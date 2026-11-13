@@ -1,0 +1,21 @@
+# Example same-origin frontend + API gateway routing.
+# Replace server_name and root with the public hostname and release frontend path.
+server {
+    listen 80;
+    server_name shop.example.com;
+    root C:/ecom/releases/current/frontend;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~ ^/(org-access|customer-profile|catalog-service|inventory-service|payment-service|alerts-service|notification-service|order-api|cart-api|fulfillment)(/|$) {
+        proxy_pass http://127.0.0.1:58082;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

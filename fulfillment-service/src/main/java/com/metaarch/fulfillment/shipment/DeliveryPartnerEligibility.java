@@ -22,7 +22,7 @@ public class DeliveryPartnerEligibility {
   private final RestClient orgAccess;
 
   public DeliveryPartnerEligibility(ShipmentRepository shipments, RestClient.Builder builder,
-      @Value("${ORG_ACCESS_URL:http://localhost:3310}") String orgAccessUrl) {
+      @Value("${ORG_ACCESS_URL:http://localhost:93310}") String orgAccessUrl) {
     this.shipments = shipments;
     this.orgAccess = builder.clone().baseUrl(orgAccessUrl).build();
   }

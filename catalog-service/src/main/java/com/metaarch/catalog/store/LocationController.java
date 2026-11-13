@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/locations")
-@org.springframework.security.access.prepost.PreAuthorize("@catalogAccess.global(authentication)")
 public class LocationController {
   private final StoreService service;
   private final com.metaarch.catalog.config.CatalogAccess access;
@@ -22,19 +21,28 @@ public class LocationController {
   }
 
   @GetMapping
-  List<StoreResponse> list(@RequestParam(required = false) Boolean active) {
-    return service.listLocations(active);
+  @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GLOBAL_ADMIN','SUPER_ADMIN','LOCATION_ADMIN')")
+  List<StoreResponse> list(@RequestParam(required = false) Boolean active, Authentication auth) {
+    List<StoreResponse> locations = service.listLocations(active);
+    if (access.global(auth)) return locations;
+    return locations.stream()
+        .filter(location -> access.inLocation(auth, location.location())
+            || access.inLocation(auth, location.id())
+            || access.inLocation(auth, location.name()))
+        .toList();
   }
 
   @PostMapping
+  @org.springframework.security.access.prepost.PreAuthorize("@catalogAccess.superAdmin(authentication)")
   ResponseEntity<StoreResponse> create(@Valid @RequestBody StoreRequest request, Authentication auth) {
     requireLocationId(request.id());
-    if (!access.global(auth)) throw new AccessDeniedException("Only global administrators can manage locations.");
+    if (!access.superAdmin(auth)) throw new AccessDeniedException("Only Super Admins can manage locations.");
     StoreResponse location = service.create(request);
     return ResponseEntity.created(URI.create("/api/v1/locations/" + location.id())).body(location);
   }
 
   @PutMapping("/{id}")
+  @org.springframework.security.access.prepost.PreAuthorize("@catalogAccess.superAdmin(authentication)")
   StoreResponse update(@PathVariable String id, @Valid @RequestBody StoreRequest request) {
     requireLocationId(id);
     if (!id.equals(request.id())) throw new IllegalArgumentException("Location ID cannot be changed.");
@@ -42,6 +50,7 @@ public class LocationController {
   }
 
   @DeleteMapping("/{id}")
+  @org.springframework.security.access.prepost.PreAuthorize("@catalogAccess.superAdmin(authentication)")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   void delete(@PathVariable String id) {
     requireLocationId(id);

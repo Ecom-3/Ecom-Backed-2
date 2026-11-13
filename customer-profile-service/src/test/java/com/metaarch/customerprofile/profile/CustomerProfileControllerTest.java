@@ -33,6 +33,12 @@ class CustomerProfileControllerTest {
     mvc.perform(get("/api/v1/profiles/me").with(jwt().jwt(j -> j.subject("alice"))))
       .andExpect(status().isOk()).andExpect(jsonPath("$.email").value("alice@example.com"));
   }
+  @Test void missingAuthenticatedProfileReturnsEmptyProfileForAccountFallback() throws Exception {
+    String customerId = java.util.UUID.randomUUID().toString();
+    mvc.perform(get("/api/v1/profiles/me").with(jwt().jwt(j -> j.subject("customer-without-profile").claim("customerId", customerId))))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(customerId))
+      .andExpect(jsonPath("$.username").value("customer-without-profile"));
+  }
   @Test void rejectsInvalidProfile() throws Exception {
     mvc.perform(put("/api/v1/profiles/me").with(jwt()).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\",\"phone\":\"123\"}"))
       .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fields.name").exists()).andExpect(jsonPath("$.fields.phone").exists());
