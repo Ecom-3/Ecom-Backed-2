@@ -183,6 +183,10 @@ $env:FLYWAY_ENABLED = "false"
 $env:SPRING_FLYWAY_ENABLED = "false"
 $env:SPRING_JPA_HIBERNATE_DDL_AUTO = "validate"
 $env:SPRING_SQL_INIT_MODE = "never"
+# Each Spring service otherwise gets a separate default-sized Hikari pool. Keep
+# the aggregate MySQL connection count low enough for local MySQL installations.
+$env:SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE = "2"
+$env:SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE = "0"
 $env:CUSTOMER_MIGRATION_JDBC_URL = "jdbc:mysql://$MysqlHost`:$MysqlPort/customer_profiles?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
 $env:CUSTOMER_MIGRATION_DB_USER = $MysqlUsername
 $env:CUSTOMER_MIGRATION_DB_PASSWORD = $MysqlPassword
@@ -206,6 +210,19 @@ $usingBundledKafka = $EnableLegacyAlerts -and $env:KAFKA_HOME -and ([IO.Path]::G
 function Test-LocalPort {
     param([string]$HostName, [int]$Port)
     return [bool](Test-NetConnection -ComputerName $HostName -Port $Port -InformationLevel Quiet -WarningAction SilentlyContinue)
+}
+
+function Get-ListeningServicePorts {
+    param([int[]]$Ports)
+
+    foreach ($line in (& netstat.exe -ano -p tcp 2>$null)) {
+        if ($line -match '^\s*TCP\s+\S+:(?<port>\d+)\s+\S+\s+LISTENING\s+(?<pid>\d+)\s*$') {
+            $port = [int]$Matches.port
+            if ($port -in $Ports) {
+                [pscustomobject]@{ LocalPort = $port; OwningProcess = [int]$Matches.pid }
+            }
+        }
+    }
 }
 
 function Wait-LocalPort {
@@ -408,7 +425,13 @@ function Stop-LocalService {
     if ($pidValue -and $pidValue -match '^\d+$') {
         $process = Get-Process -Id ([int]$pidValue) -ErrorAction SilentlyContinue
         if ($process) {
-            Stop-Process -Id ([int]$pidValue) -Force
+            # The tracked PID is the launcher PowerShell process; Maven/Java is
+            # its child. Terminate the owned process tree so DB connections do
+            # not survive a stop/restart and exhaust MySQL's limit.
+            & taskkill.exe /PID ([int]$pidValue) /T /F | Out-Null
+            if ($LASTEXITCODE -ne 0 -and (Get-Process -Id ([int]$pidValue) -ErrorAction SilentlyContinue)) {
+                throw "Could not stop the service process tree for $Name (PID $pidValue)."
+            }
             Write-Host ("Stopped {0} (PID {1})" -f $Name, $pidValue)
         } else {
             Write-Host "Already stopped: $Name"
@@ -431,10 +454,8 @@ function Clear-ServicePorts {
     if ($requiredPorts.Count -eq 0) { return }
 
     Write-Host "Checking required service ports: $(($requiredPorts.Values | Sort-Object -Unique) -join ', ')"
-    # Query all listeners so an empty result for a particular port is not an error.
-    $listeners = @(Get-NetTCPConnection -ErrorAction Stop | Where-Object {
-        $_.State -eq 'Listen' -and $_.LocalPort -in $requiredPorts.Values
-    })
+    # netstat works in standard user sessions where the TCP CIM provider may deny access.
+    $listeners = @(Get-ListeningServicePorts -Ports @($requiredPorts.Values))
     $owners = @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)
     foreach ($ownerId in $owners) {
         if ($ownerId -le 4 -or $ownerId -eq $PID) {
@@ -463,9 +484,7 @@ function Clear-ServicePorts {
     }
     $deadline = (Get-Date).AddSeconds(15)
     do {
-        $remaining = @(Get-NetTCPConnection -ErrorAction Stop | Where-Object {
-            $_.State -eq 'Listen' -and $_.LocalPort -in $requiredPorts.Values
-        })
+        $remaining = @(Get-ListeningServicePorts -Ports @($requiredPorts.Values))
         if ($remaining.Count -eq 0) {
             Write-Host "All required service ports are available."
             return
@@ -510,6 +529,10 @@ function Start-LocalProcess {
 function Start-Services {
     param([string[]]$Selected)
 
+    # Stop only listeners on this launcher's assigned service ports before DB
+    # preflight; stale instances can otherwise keep MySQL at max_connections.
+    Clear-ServicePorts -Selected $Selected
+
     if ($IsolatedTest) {
         $mysql = Get-Command mysql.exe -ErrorAction SilentlyContinue
         $mysqlPath = if ($mysql) { $mysql.Source } else { 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe' }
@@ -533,13 +556,13 @@ function Start-Services {
         } finally { Pop-Location }
     }
 
-    Clear-ServicePorts -Selected $Selected
-
     foreach ($group in $startupGroups) {
         foreach ($serviceName in $group) {
             if ($Selected -contains $serviceName) {
                 $serviceDir = Join-Path $rootDir $serviceName
-                $command = 'mvn -DskipTests spring-boot:run'
+                # -DskipTests still compiles test sources; startup must not be
+                # blocked by unrelated/stale test fixtures.
+                $command = "mvn '-Dmaven.test.skip=true' spring-boot:run"
                 $clientEnabled = if ($serviceName -eq 'Ecom-eureka-server') { 'true' } else { 'false' }
                 $command = "`$env:SERVER_PORT='$($servicePorts[$serviceName])'; `$env:SERVER_ADDRESS='127.0.0.1'; `$env:EUREKA_CLIENT_ENABLED='$clientEnabled'; $command"
                 Start-LocalProcess -Name $serviceName -Directory $serviceDir -Command $command
@@ -579,6 +602,9 @@ function Assert-SyncSchemas {
     $oldPassword = $env:MYSQL_PWD
     try {
         $env:MYSQL_PWD = $MysqlPassword
+        # Run all read-only checks in one mysql session to use one DB connection.
+        $queries = [System.Collections.Generic.List[string]]::new()
+        $expected = @{}
         foreach ($name in $Selected) {
             if (-not $schemas.ContainsKey($name)) { continue }
             $schema = $schemas[$name]
@@ -587,23 +613,44 @@ function Assert-SyncSchemas {
             if ($name -eq 'order-service') { $tables += 'order_creation_requests' }
             if ($name -eq 'payment-service') { $tables += @('provider_payment_bindings','provider_payment_receipts') }
             foreach ($table in $tables) {
-                $query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$schema' AND table_name='$table'"
-                $count = & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --skip-column-names --execute=$query
-                if ($LASTEXITCODE -ne 0) { throw "Read-only schema preflight failed for $name. No service started." }
-                if ([string]$count -ne '1') { throw "Missing $schema.$table. Obtain migration approval and provision the reviewed schema before starting services." }
-                & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --execute="SELECT $($columns[$table]) FROM ``$schema``.``$table`` LIMIT 0" | Out-Null
-                if ($LASTEXITCODE -ne 0) { throw "Required columns are missing in $schema.$table." }
-                $engine = & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --skip-column-names --execute="SELECT engine FROM information_schema.tables WHERE table_schema='$schema' AND table_name='$table'"
-                if ($LASTEXITCODE -ne 0 -or [string]$engine -ne 'InnoDB') { throw "Transactional InnoDB is required for $schema.$table." }
+                $key = "$schema.$table"
+                $expected[$key] = @{ Service = $name; ColumnCount = @($columns[$table].Split(',')).Count }
+                $queries.Add("SELECT CONCAT('TABLE|$key|',COUNT(*)) FROM information_schema.tables WHERE table_schema='$schema' AND table_name='$table';")
+                $columnNames = ($columns[$table].Split(',') | ForEach-Object { "'$_'" }) -join ','
+                $queries.Add("SELECT CONCAT('COLUMNS|$key|',COUNT(*)) FROM information_schema.columns WHERE table_schema='$schema' AND table_name='$table' AND column_name IN ($columnNames);")
+                $queries.Add("SELECT CONCAT('ENGINE|$key|',COALESCE(MAX(engine),'MISSING')) FROM information_schema.tables WHERE table_schema='$schema' AND table_name='$table';")
             }
             $lockTable = if ($name -eq 'cart-service') { 'cart_write_lock' } else { 'sync_receiver_lock' }
-            $seed = & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --skip-column-names --execute="SELECT COUNT(*) FROM ``$schema``.$lockTable WHERE id=1"
-            if ($LASTEXITCODE -ne 0 -or [string]$seed -ne '1') { throw "Missing synchronization lock seed in $schema." }
+            $queries.Add("SELECT CONCAT('SEED|$name|$schema|',COUNT(*)) FROM ``$schema``.$lockTable WHERE id=1;")
             if ($name -eq 'order-service') {
-                $fee = & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --skip-column-names --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$schema' AND table_name='orders' AND column_name='handling_fee' AND data_type='decimal' AND numeric_precision=10 AND numeric_scale=2 AND is_nullable='NO' AND column_default='0.00'"
-                if ($LASTEXITCODE -ne 0 -or [string]$fee -ne '1') { throw 'Order handling_fee requires compatible reviewed V10 schema.' }
-                $sourceAddress = & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --skip-column-names --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$schema' AND table_name='order_addresses' AND column_name='source_address_id' AND data_type='varchar' AND character_maximum_length=64 AND is_nullable='YES'"
-                if ($LASTEXITCODE -ne 0 -or [string]$sourceAddress -ne '1') { throw 'Order order_addresses.source_address_id requires compatible reviewed V20 schema. Apply V20__add_selected_source_address_reference.sql before starting order-service.' }
+                $queries.Add("SELECT CONCAT('HANDLING_FEE|',COUNT(*)) FROM information_schema.columns WHERE table_schema='$schema' AND table_name='orders' AND column_name='handling_fee' AND data_type='decimal' AND numeric_precision=10 AND numeric_scale=2 AND is_nullable='NO' AND column_default='0.00';")
+                $queries.Add("SELECT CONCAT('SOURCE_ADDRESS|',COUNT(*)) FROM information_schema.columns WHERE table_schema='$schema' AND table_name='order_addresses' AND column_name='source_address_id' AND data_type='varchar' AND character_maximum_length=64 AND is_nullable='YES';")
+            }
+        }
+        $query = $queries -join "`n"
+        $results = @($query | & $mysql --host=$MysqlHost --port=$MysqlPort --user=$MysqlUsername --batch --skip-column-names)
+        if ($LASTEXITCODE -ne 0) { throw 'Read-only schema preflight failed. MySQL rejected the preflight connection or query; no service started.' }
+        foreach ($line in $results) {
+            $parts = ([string]$line).Split('|')
+            switch ($parts[0]) {
+                'TABLE' {
+                    if ($parts[2] -ne '1') { throw "Missing $($parts[1]). Obtain migration approval and provision the reviewed schema before starting services." }
+                }
+                'COLUMNS' {
+                    if ($parts[2] -ne [string]$expected[$parts[1]].ColumnCount) { throw "Required columns are missing in $($parts[1])." }
+                }
+                'ENGINE' {
+                    if ($parts[2] -ne 'InnoDB') { throw "Transactional InnoDB is required for $($parts[1])." }
+                }
+                'SEED' {
+                    if ($parts[3] -ne '1') { throw "Missing synchronization lock seed in $($parts[2])." }
+                }
+                'HANDLING_FEE' {
+                    if ($parts[1] -ne '1') { throw 'Order handling_fee requires compatible reviewed V10 schema.' }
+                }
+                'SOURCE_ADDRESS' {
+                    if ($parts[1] -ne '1') { throw 'Order order_addresses.source_address_id requires compatible reviewed V20 schema. Apply V20__add_selected_source_address_reference.sql before starting order-service.' }
+                }
             }
         }
     } finally { $env:MYSQL_PWD = $oldPassword }
@@ -677,9 +724,6 @@ if ($selectedServices | Where-Object { $_ -in @('cart-service','order-service','
 }
 
 if ($Action -eq 'restart') {
-    if ($selectedServices | Where-Object { $_ -in @('order-service','payment-service','fulfillment-service','notification-service') }) {
-        Assert-SyncSchemas -Selected $selectedServices
-    }
     Stop-Services -Selected $selectedServices
     Start-Dependencies
     Start-Services -Selected $selectedServices

@@ -41,7 +41,7 @@ class OrderServiceTest {
     UUID sourceAddressId = UUID.randomUUID();
     CreateOrderRequest request = request(sourceAddressId.toString());
     when(catalogDeliveryQuoteClient.verify("store-1", new BigDecimal("17.4400000"), new BigDecimal("78.5000000"), new BigDecimal("39.98"), "Standard Delivery"))
-      .thenReturn(new CatalogDeliveryQuoteClient.DeliveryQuote("store-1", new BigDecimal("17.4500000"), new BigDecimal("78.4900000"), new BigDecimal("17.4400000"), new BigDecimal("78.5000000"), true, new BigDecimal("4.25"), 4250L, 720, 12, "3-5 KM", null, 2L, "Standard Delivery", BigDecimal.ZERO, new BigDecimal("499.00"), false, new BigDecimal("100.00"), 20, 30, false, List.of(), "Delivery available"));
+      .thenReturn(new CatalogDeliveryQuoteClient.DeliveryQuote("store-1", new BigDecimal("17.4500000"), new BigDecimal("78.4900000"), new BigDecimal("17.4400000"), new BigDecimal("78.5000000"), true, new BigDecimal("4.25"), 4250L, 720, 12, "3-5 KM", null, 2L, "Standard Delivery", BigDecimal.ZERO, new BigDecimal("499.00"), false, new BigDecimal("100.00"), 20, 30, false, List.of(), "Delivery available", null));
     when(catalogDeliveryQuoteClient.resolveLocation(2L)).thenReturn(new CatalogDeliveryQuoteClient.DeliveryZoneLocation(2L, "store-1", "hyderabad"));
 
     OrderResponse response = service.create(request);
@@ -361,7 +361,7 @@ class OrderServiceTest {
   }
 
   private CatalogDeliveryQuoteClient.DeliveryQuote snapshotQuote() {
-    return new CatalogDeliveryQuoteClient.DeliveryQuote("india-store-1-1", null, null, null, null, true, new BigDecimal("5.60"), 5601L, 917, 16, "0-10 KM", null, 1L, "Instant Delivery", new BigDecimal("15.00"), new BigDecimal("499.00"), false, null, 15, 30, false, List.of(), "Delivery available");
+    return new CatalogDeliveryQuoteClient.DeliveryQuote("india-store-1-1", null, null, null, null, true, new BigDecimal("5.60"), 5601L, 917, 16, "0-10 KM", null, 1L, "Instant Delivery", new BigDecimal("15.00"), new BigDecimal("499.00"), false, null, 15, 30, false, List.of(), "Delivery available", null);
   }
 }
 
