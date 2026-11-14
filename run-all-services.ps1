@@ -563,8 +563,10 @@ function Start-Services {
                 # -DskipTests still compiles test sources; startup must not be
                 # blocked by unrelated/stale test fixtures.
                 $command = "mvn '-Dmaven.test.skip=true' spring-boot:run"
-                $clientEnabled = if ($serviceName -eq 'Ecom-eureka-server') { 'true' } else { 'false' }
-                $command = "`$env:SERVER_PORT='$($servicePorts[$serviceName])'; `$env:SERVER_ADDRESS='127.0.0.1'; `$env:EUREKA_CLIENT_ENABLED='$clientEnabled'; $command"
+                # Gateway routes use Eureka discovery; application services
+                # must register unless this is an isolated no-Eureka run.
+                $clientEnabled = if ($IsolatedTest) { 'false' } else { 'true' }
+                $command = "`$env:SERVER_PORT='$($servicePorts[$serviceName])'; `$env:SERVER_ADDRESS='127.0.0.1'; `$env:EUREKA_INSTANCE_HOSTNAME='127.0.0.1'; `$env:EUREKA_INSTANCE_IP_ADDRESS='127.0.0.1'; `$env:EUREKA_INSTANCE_PREFER_IP_ADDRESS='true'; `$env:EUREKA_CLIENT_ENABLED='$clientEnabled'; $command"
                 Start-LocalProcess -Name $serviceName -Directory $serviceDir -Command $command
                 Wait-ServiceHealth -Name $serviceName
             }
