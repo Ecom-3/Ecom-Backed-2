@@ -97,7 +97,12 @@ MYSQL_PORT="${MYSQL_PORT:-3306}"
 MYSQL_USERNAME="${MYSQL_USERNAME:-root}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
 KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
+SERVER_ADDRESS="${SERVER_ADDRESS:-127.0.0.1}"
+EUREKA_INSTANCE_HOSTNAME="${EUREKA_INSTANCE_HOSTNAME:-127.0.0.1}"
+EUREKA_INSTANCE_IP_ADDRESS="${EUREKA_INSTANCE_IP_ADDRESS:-127.0.0.1}"
+EUREKA_INSTANCE_PREFER_IP_ADDRESS="${EUREKA_INSTANCE_PREFER_IP_ADDRESS:-true}"
 export MYSQL_HOST MYSQL_PORT MYSQL_USERNAME MYSQL_PASSWORD KAFKA_BOOTSTRAP_SERVERS
+export SERVER_ADDRESS EUREKA_INSTANCE_HOSTNAME EUREKA_INSTANCE_IP_ADDRESS EUREKA_INSTANCE_PREFER_IP_ADDRESS
 export CONFIG_SERVER_URL="http://localhost:58888"
 export EUREKA_SERVER_URL="http://localhost:58761/eureka"
 export ORDER_SERVICE_URL="http://127.0.0.1:53311"
@@ -658,7 +663,7 @@ start_service() {
         nohup bash -c 'cd "$1" || exit; exec node --title=launcher.service.name=Ecom-frontend node_modules/vite/bin/vite.js --host 127.0.0.1 --port 55173 --strictPort' \
             launcher.service.name=Ecom-frontend "$directory" >"$LOG_DIR/$name.log" 2>&1 </dev/null &
     else
-        nohup bash -c 'cd "$1" || exit; export SERVER_PORT="$2" SERVER_ADDRESS=127.0.0.1; if [[ "$3" == Ecom-eureka-server ]]; then export EUREKA_CLIENT_ENABLED=true; else export EUREKA_CLIENT_ENABLED=false; fi; exec mvn "$0" -DskipTests spring-boot:run' \
+        nohup bash -c 'cd "$1" || exit; export SERVER_PORT="$2" SERVER_ADDRESS="$SERVER_ADDRESS" EUREKA_INSTANCE_HOSTNAME="$EUREKA_INSTANCE_HOSTNAME" EUREKA_INSTANCE_IP_ADDRESS="$EUREKA_INSTANCE_IP_ADDRESS" EUREKA_INSTANCE_PREFER_IP_ADDRESS="$EUREKA_INSTANCE_PREFER_IP_ADDRESS" EUREKA_CLIENT_ENABLED=true; exec mvn "$0" -DskipTests spring-boot:run' \
             "-Dlauncher.service.name=$name" "$directory" "$port" "$name" >"$LOG_DIR/$name.log" 2>&1 </dev/null &
     fi
     pid=$!

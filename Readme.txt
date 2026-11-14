@@ -46,6 +46,12 @@ or ./tools/kafka) when its Unix launcher and KRaft config are present.
 Unlike the Windows launcher, it does not start a system MySQL service and
 will not kill untracked processes to clear a port.
 
+For a single-host Linux deployment, services bind to and register with Eureka
+as 127.0.0.1 by default, so the local gateway can reach them without exposing
+their application ports. If services run on separate hosts, set SERVER_ADDRESS,
+EUREKA_INSTANCE_HOSTNAME, and EUREKA_INSTANCE_IP_ADDRESS in .env to addresses
+reachable between those hosts before starting the launcher.
+
 
 Role	Example username
 Super admin	admin
